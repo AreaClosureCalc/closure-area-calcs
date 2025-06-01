@@ -120,8 +120,8 @@
           const dy = line.distArc * Math.cos(angle);
           coords.push({ x: last.x + dx, y: last.y + dy });
         } else if (line.type === 'Curve' && line.radius && line.distArc && line.bearing) {
-          const delta = (line.distArc / line.radius) * (180 / Math.PI); // in degrees
-          const chord = 2 * line.radius * Math.sin((delta * Math.PI / 180) / 2);
+          const delta = line.distArc / line.radius;
+          const chord = 2 * line.radius * Math.sin(delta / 2);
           const chordBrg = dmsToRadians(line.bearing);
           const dx = chord * Math.sin(chordBrg);
           const dy = chord * Math.cos(chordBrg);
@@ -176,7 +176,7 @@
     addLine('Straight', '90.2412', '35.735');
     addLine('Straight', '90.2412', '0.1');
     addLine('Straight', '179.5220', '13.129');
-    addLine('Curve', '178.3719', '109.569', '206.106', 'R');
+    addLine('Curve', '283.8511', '108.283', '206.106', 'R');
   </script>
 </body>
 </html>
