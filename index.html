@@ -1,17 +1,27 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="UTF-8">
   <title>Closure & Area Calculator</title>
-  <meta charset="UTF-8" />
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <h1>Closure & Area Calculator</h1>
   <p>Enter your lines below:</p>
-  <div id="app"></div>
-
-  <canvas id="plotCanvas" width="500" height="500" style="border:1px solid #ccc; margin-top:20px;"></canvas>
-
+  <table id="inputTable">
+    <tr>
+      <th>Type</th>
+      <th>Bearing (D.MMSS)</th>
+      <th>Distance / Arc Len (m)</th>
+      <th>Radius (m)</th>
+      <th>Dir (R/L)</th>
+      <th>Action</th>
+    </tr>
+  </table>
+  <button onclick="addLine()">Add Line</button>
+  <button onclick="calculate()">Calculate</button>
+  <pre id="output"></pre>
+  <canvas id="canvas" width="600" height="600"></canvas>
   <script src="script.js"></script>
 </body>
 </html>
