@@ -1,6 +1,7 @@
 // script.js
 
-// Helper: Convert D.MMSS (e.g. 359.5222) to radians
+// --- Helper functions ---
+
 function dmsToRadians(dms) {
   let deg = Math.floor(dms);
   let min = Math.floor((dms - deg) * 100);
@@ -9,7 +10,6 @@ function dmsToRadians(dms) {
   return decimal * (Math.PI / 180);
 }
 
-// Helper: Convert decimal degrees to D°MM'SS"
 function toDMS(angle) {
   let deg = Math.floor(angle);
   let minFloat = (angle - deg) * 60;
@@ -20,7 +20,6 @@ function toDMS(angle) {
   return `${deg}°${min.toString().padStart(2, '0')}'${sec.toString().padStart(2, '0')}"`;
 }
 
-// Helper: Calculate azimuth (in decimal degrees) from dE, dN
 function bearingFromDelta(dx, dy) {
   let angle = Math.atan2(dx, dy) * 180 / Math.PI;
   if (angle < 0) angle += 360;
@@ -58,7 +57,7 @@ function addLine(type = 'Straight', bearing = '', distance = '', radius = '', di
   cellAction.appendChild(button);
 }
 
-// Main calculation function (triggered by Calculate button)
+// Main calculation function
 function calculate() {
   const inputTable = document.getElementById('inputTable');
   const output = document.getElementById('output');
@@ -81,9 +80,10 @@ function calculate() {
   }
 
   let coords = [{ north: startNorth, east: startEast }];
-  let totalDistance = 0;
+  let totalTraverseDistance = 0;
   let report = [];
   let area = 0;
+  let arcAreaCorrection = 0; // extra area from arc sectors
 
   report.push('Lot Closure Report - Lot : ArterialHwy\n=================================');
   report.push('file- C:\\Users\\czari\\...\\lc_ArterialHwy.txt');
@@ -94,109 +94,94 @@ function calculate() {
   report.push(' Leg    Segment    Azimuth       Length   Front   End_Northing   End_Easting');
   report.push(' ---    -------    -------       ------   -----   ------------   -----------');
 
-  lines.forEach((line, idx) => {
+  for (let idx = 0; idx < lines.length; idx++) {
     let last = coords[coords.length - 1];
     let next = {};
     let az = 0, length = 0, segType = '', arcString = '', front = 'No';
 
-    if (line.type === 'Straight') {
+    if (lines[idx].type === 'Straight') {
       segType = 'Line';
-      az = line.bearing;
-      length = line.distArc;
-      let angleRad = dmsToRadians(line.bearing);
+      az = lines[idx].bearing;
+      length = lines[idx].distArc;
+      let angleRad = dmsToRadians(az);
       let dE = length * Math.sin(angleRad);
       let dN = length * Math.cos(angleRad);
       next.north = last.north + dN;
       next.east = last.east + dE;
       coords.push(next);
-      totalDistance += length;
+      totalTraverseDistance += length;
       report.push(
         `${(idx + 1).toString().padStart(3)}    ${segType.padEnd(7)}  ${toDMS(az).padStart(9)}   ${length.toFixed(3).padStart(7)}  ${front.padEnd(5)}  ${next.north.toFixed(3).padStart(13)}  ${next.east.toFixed(9)}`
       );
-    } else if (line.type === 'Curve') {
+    } else if (lines[idx].type === 'Curve') {
       segType = 'Curve';
-      // Chord properties
-      let deltaRad = line.distArc / line.radius;
+      // User should enter: bearing (chord), arc length, radius, dir
+      let chordBrg = lines[idx].bearing; // D.MMSS
+      let arcLen = lines[idx].distArc; // arc length
+      let radius = lines[idx].radius;
+      let deltaRad = arcLen / radius; // delta angle, radians
       let deltaDeg = deltaRad * 180 / Math.PI;
-      let chord = 2 * line.radius * Math.sin(deltaRad / 2);
-      length = chord;
-      az = line.bearing;
-      let chordRad = dmsToRadians(line.bearing);
-      let dE = chord * Math.sin(chordRad);
-      let dN = chord * Math.cos(chordRad);
+      let chordLen = 2 * radius * Math.sin(deltaRad / 2);
+
+      // Chord bearing in radians
+      let chordBrgRad = dmsToRadians(chordBrg);
+
+      // Advance by chord, at chord bearing
+      let dE = chordLen * Math.sin(chordBrgRad);
+      let dN = chordLen * Math.cos(chordBrgRad);
       next.north = last.north + dN;
       next.east = last.east + dE;
       coords.push(next);
-      totalDistance += chord;
-      arcString = `ARC= ${line.distArc}, RAD= ${line.radius}, DELTA= ${toDMS(deltaDeg)}\nADD_ARC_AREA = n/a`;
+
+      // For total traverse distance: use arc length, not chord
+      totalTraverseDistance += arcLen;
+
+      // For area: keep shoelace area, and sum arc sector area
+      // Arc sector area (always positive): A = 0.5 * R^2 * delta
+      // Direction: Right = positive, Left = negative (for area correction sign)
+      let sign = lines[idx].dir === "R" ? 1 : -1;
+      arcAreaCorrection += sign * (0.5 * radius * radius * (deltaRad - Math.sin(deltaRad)));
+
+      arcString = `ARC= ${arcLen}, RAD= ${radius}, DELTA= ${toDMS(deltaDeg)}\nADD_ARC_AREA = ${(sign * 0.5 * radius * radius * (deltaRad - Math.sin(deltaRad))).toFixed(3)}`;
       report.push(
-        `${(idx + 1).toString().padStart(3)}    ${segType.padEnd(7)}  ${toDMS(az).padStart(9)}   ${chord.toFixed(3).padStart(7)}  ${front.padEnd(5)}  ${next.north.toFixed(3).padStart(13)}  ${next.east.toFixed(9)}`
+        `${(idx + 1).toString().padStart(3)}    ${segType.padEnd(7)}  ${toDMS(chordBrg).padStart(9)}   ${chordLen.toFixed(3).padStart(7)}  ${front.padEnd(5)}  ${next.north.toFixed(3).padStart(13)}  ${next.east.toFixed(9)}`
       );
       report.push(arcString);
     }
-  });
+  }
 
-  // Shoelace area
+  // Shoelace area (for chord geometry)
   for (let i = 0; i < coords.length - 1; i++) {
     area += (coords[i].east * coords[i + 1].north) - (coords[i + 1].east * coords[i].north);
   }
   area = Math.abs(area / 2);
 
-  // Misclosure
+  // Add sum of arc sector areas (with sign)
+  let totalArea = area + arcAreaCorrection;
+
+  // Misclosure (end to start)
   let end = coords[coords.length - 1];
   let closureE = startEast - end.east;
   let closureN = startNorth - end.north;
   let misclose = Math.sqrt(closureE ** 2 + closureN ** 2);
   let miscloseAz = bearingFromDelta(closureE, closureN);
-  let eoc = misclose > 0 ? totalDistance / misclose : 0;
+  let eoc = misclose > 0 ? totalTraverseDistance / misclose : 0;
 
   report.push('');
   report.push(`Ending location (North, East) = ( ${end.north.toFixed(3)}, ${end.east.toFixed(3)} )\n`);
-  report.push(`Total Distance          : ${totalDistance.toFixed(3)}`);
+  report.push(`Total Distance          : ${totalTraverseDistance.toFixed(3)}`);
   report.push(`Total Traverse Stations : ${lines.length + 1}`);
   report.push(`Misclosure Direction    : ${toDMS(miscloseAz)} (from ending location to starting location)`);
   report.push(`Misclosure Distance     : ${misclose.toFixed(3)}`);
   report.push(`Error of Closure        : 1:${eoc.toFixed(1)}`);
-  report.push(`AREA                    : ${area.toFixed(3)} sq. m. (straight segment added to close traverse)`);
-  report.push(`                        = ${(area / 10000).toFixed(6)} Hectares\n`);
+  report.push(`AREA                    : ${totalArea.toFixed(3)} sq. m. (straight segment added to close traverse)`);
+  report.push(`                        = ${(totalArea / 10000).toFixed(6)} Hectares\n`);
   report.push('\n      ***********\n');
 
   output.textContent = report.join('\n');
 
-  // Draw on canvas
+  // --- Drawing: now, with curve arcs ---
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.beginPath();
-  coords.forEach((pt, i) => {
-    const scale = 2;
-    const offsetX = 300;
-    const offsetY = 300;
-    const x = offsetX + (pt.east - startEast) * scale;
-    const y = offsetY - (pt.north - startNorth) * scale;
-    if (i === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
-  });
-  ctx.strokeStyle = 'blue';
-  ctx.stroke();
 
-  coords.forEach(pt => {
-    const scale = 2;
-    const offsetX = 300;
-    const offsetY = 300;
-    const x = offsetX + (pt.east - startEast) * scale;
-    const y = offsetY - (pt.north - startNorth) * scale;
-    ctx.beginPath();
-    ctx.arc(x, y, 2, 0, 2 * Math.PI);
-    ctx.fillStyle = 'red';
-    ctx.fill();
-  });
-}
-
-// Auto-populate with a sample on load
-window.onload = () => {
-  addLine('Straight', '359.5222', '15.830');
-  addLine('Straight', '112.1549', '74.890');
-  addLine('Straight', '90.2412', '35.735');
-  addLine('Straight', '90.2412', '0.1');
-  addLine('Straight', '179.5220', '13.129');
-  addLine('Curve', '283.8511', '108.283', '206.106', 'R');
-};
+  const scale = 2;
+  const offsetX =
