@@ -1,5 +1,3 @@
-// script.js
-
 function dmsToRadians(dms) {
   let deg = Math.floor(dms);
   let min = Math.floor((dms - deg) * 100);
@@ -8,11 +6,10 @@ function dmsToRadians(dms) {
   return decimal * (Math.PI / 180);
 }
 
-function toDMS(angle) {
-  let deg = Math.floor(angle);
-  let minFloat = (angle - deg) * 60;
-  let min = Math.floor(minFloat);
-  let sec = Math.round((minFloat - min) * 60);
+function dmsToDMSstr(dms) {
+  let deg = Math.floor(dms);
+  let min = Math.floor((dms - deg) * 100);
+  let sec = Math.round((((dms - deg) * 100) - min) * 100);
   if (sec === 60) { sec = 0; min += 1; }
   if (min === 60) { min = 0; deg += 1; }
   return `${deg}°${min.toString().padStart(2, '0')}'${sec.toString().padStart(2, '0')}"`;
@@ -78,7 +75,7 @@ function calculate() {
   let totalTraverseDistance = 0;
   let report = [];
   let area = 0;
-  let arcAreaCorrection = 0; // segment area
+  let arcAreaCorrection = 0;
 
   report.push('Lot Closure Report - Lot : ArterialHwy\n=================================');
   report.push('file- C:\\Users\\czari\\...\\lc_ArterialHwy.txt');
@@ -111,61 +108,64 @@ function calculate() {
       coords.push(next);
       totalTraverseDistance += length;
       report.push(
-        `${(idx + 1).toString().padStart(3)}    ${segType.padEnd(7)}  ${toDMS(az).padStart(9)}   ${length.toFixed(3).padStart(7)}  ${front.padEnd(5)}  ${next.north.toFixed(3).padStart(13)}  ${next.east.toFixed(9)}`
+        `${(idx + 1).toString().padStart(3)}    ${segType.padEnd(7)}  ${dmsToDMSstr(az).padStart(9)}   ${length.toFixed(3).padStart(7)}  ${front.padEnd(5)}  ${next.north.toFixed(3).padStart(13)}  ${next.east.toFixed(9)}`
       );
-      // Push dummy for curve
       curveCenters.push(null);
       curveRadii.push(null);
       curveAngles.push(null);
     } else if (lines[idx].type === 'Curve') {
       segType = 'Curve';
-      let chordBrg = lines[idx].bearing; // D.MMSS
-      let arcLen = lines[idx].distArc; // arc length
+      let chordBrg = lines[idx].bearing;
+      let arcLen = lines[idx].distArc;
       let radius = lines[idx].radius;
-      let deltaRad = arcLen / radius; // delta angle, radians
+      let dir = lines[idx].dir;
+
+      let deltaRad = arcLen / radius;
       let deltaDeg = deltaRad * 180 / Math.PI;
       let chordLen = 2 * radius * Math.sin(deltaRad / 2);
       let chordBrgRad = dmsToRadians(chordBrg);
 
-      // Advance by chord, at chord bearing
+      // Advance by chord at chord bearing
       let dE = chordLen * Math.sin(chordBrgRad);
       let dN = chordLen * Math.cos(chordBrgRad);
       next.north = last.north + dN;
       next.east = last.east + dE;
       coords.push(next);
 
-      // For total traverse distance: use arc length (the actual distance walked)
+      // Traverse distance is arc length
       totalTraverseDistance += arcLen;
 
-      // For area: add sector minus triangle (always positive), direction (Right = positive, Left = negative)
-      let sign = lines[idx].dir === "R" ? 1 : -1;
+      // Area correction (arc segment area, signed by R/L)
+      let sign = dir === "R" ? 1 : -1;
       let segArea = sign * (0.5 * radius * radius * (deltaRad - Math.sin(deltaRad)));
       arcAreaCorrection += segArea;
 
-      arcString = `ARC= ${arcLen}, RAD= ${radius}, DELTA= ${toDMS(deltaDeg)}\nADD_ARC_AREA = ${segArea.toFixed(3)}`;
-      report.push(
-        `${(idx + 1).toString().padStart(3)}    ${segType.padEnd(7)}  ${toDMS(chordBrg).padStart(9)}   ${chordLen.toFixed(3).padStart(7)}  ${front.padEnd(5)}  ${next.north.toFixed(3).padStart(13)}  ${next.east.toFixed(9)}`
-      );
-      report.push(arcString);
-
-      // Store curve center for canvas
-      // Chord midpoint
+      // For drawing arc
       let midE = (last.east + next.east) / 2;
       let midN = (last.north + next.north) / 2;
-      // Chord azimuth
-      let chordAz = chordBrgRad;
-      // Center direction: +90deg for Right, -90deg for Left
-      let perpAz = chordAz + sign * Math.PI / 2;
-      // Distance from chord midpoint to center
+      let perpAz = chordBrgRad + sign * Math.PI / 2;
       let h = radius * Math.cos(deltaRad / 2);
       let centerE = midE + h * Math.sin(perpAz);
       let centerN = midN + h * Math.cos(perpAz);
-      curveCenters.push({east: centerE, north: centerN});
-      curveRadii.push(radius);
-      // Start/end angles (canvas uses atan2(y, x))
+
       let startAngle = Math.atan2(last.east - centerE, last.north - centerN);
       let endAngle = Math.atan2(next.east - centerE, next.north - centerN);
-      curveAngles.push({start: startAngle, end: endAngle, anticlockwise: sign === -1});
+      let anticlockwise = sign === -1;
+
+      curveCenters.push({east: centerE, north: centerN});
+      curveRadii.push(radius);
+      curveAngles.push({start: startAngle, end: endAngle, anticlockwise});
+
+      // Use arcLen for total distance, chordLen for geometry, arc area correction for area
+      report.push(
+        `${(idx + 1).toString().padStart(3)}    ${segType.padEnd(7)}  ${dmsToDMSstr(chordBrg).padStart(9)}   ${chordLen.toFixed(3).padStart(7)}  ${front.padEnd(5)}  ${next.north.toFixed(3).padStart(13)}  ${next.east.toFixed(9)}`
+      );
+      report.push(
+        `ARC= ${arcLen.toFixed(3)}, RAD= ${radius}, DELTA= ${dmsToDMSstr(deltaDeg)}`
+      );
+      report.push(
+        `ADD_ARC_AREA = ${Math.abs(segArea).toFixed(3)}`
+      );
     }
   }
 
@@ -190,7 +190,7 @@ function calculate() {
   report.push(`Ending location (North, East) = ( ${end.north.toFixed(3)}, ${end.east.toFixed(3)} )\n`);
   report.push(`Total Distance          : ${totalTraverseDistance.toFixed(3)}`);
   report.push(`Total Traverse Stations : ${lines.length + 1}`);
-  report.push(`Misclosure Direction    : ${toDMS(miscloseAz)} (from ending location to starting location)`);
+  report.push(`Misclosure Direction    : ${dmsToDMSstr(miscloseAz)} (from ending location to starting location)`);
   report.push(`Misclosure Distance     : ${misclose.toFixed(3)}`);
   report.push(`Error of Closure        : 1:${eoc.toFixed(1)}`);
   report.push(`AREA                    : ${totalArea.toFixed(3)} sq. m. (straight segment added to close traverse)`);
@@ -215,7 +215,6 @@ function calculate() {
     let y2 = offsetY - (pt2.north - coords[0].north) * scale;
 
     if (lines[i].type === 'Curve') {
-      // Draw actual arc between pt1 and pt2, using stored center/radius/angles
       let center = curveCenters[i];
       let radius = curveRadii[i];
       let angle = curveAngles[i];
@@ -252,10 +251,10 @@ function calculate() {
 }
 
 window.onload = () => {
-  addLine('Straight', '359.5222', '15.830');
-  addLine('Straight', '112.1549', '74.890');
-  addLine('Straight', '90.2412', '35.735');
-  addLine('Straight', '90.2412', '0.1');
-  addLine('Straight', '179.5220', '13.129');
-  addLine('Curve', '283.8511', '108.283', '206.106', 'R');
+  addLine('Straight', '359.8728', '15.830');
+  addLine('Straight', '112.2581', '74.890');
+  addLine('Straight', '90.4033', '35.735');
+  addLine('Straight', '90.4033', '0.1');
+  addLine('Straight', '179.8722', '13.129');
+  addLine('Curve', '283.8517', '108.283', '206.106', 'R');
 };
