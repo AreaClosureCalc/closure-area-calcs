@@ -50,8 +50,8 @@
       <th>Action</th>
     </tr>
   </table>
-  <button onclick="addLine()">Add Line</button>
-  <button onclick="calculate()">Calculate</button>
+  <button id="addLineBtn">Add Line</button>
+  <button id="calculateBtn">Calculate</button>
   <pre id="output"></pre>
   <canvas id="canvas" width="600" height="600"></canvas>
   <script>
@@ -59,6 +59,8 @@
     const ctx = canvas.getContext('2d');
     const inputTable = document.getElementById('inputTable');
     const output = document.getElementById('output');
+    const addLineBtn = document.getElementById('addLineBtn');
+    const calculateBtn = document.getElementById('calculateBtn');
 
     function dmsToRadians(dms) {
       let deg = Math.floor(dms);
@@ -170,13 +172,15 @@
       });
     }
 
-    // Sample input
     addLine('Straight', '359.5222', '15.830');
     addLine('Straight', '112.1549', '74.890');
     addLine('Straight', '90.2412', '35.735');
     addLine('Straight', '90.2412', '0.1');
     addLine('Straight', '179.5220', '13.129');
     addLine('Curve', '283.8511', '108.283', '206.106', 'R');
+
+    addLineBtn.addEventListener('click', () => addLine());
+    calculateBtn.addEventListener('click', () => calculate());
   </script>
 </body>
 </html>
