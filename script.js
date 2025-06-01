@@ -1,134 +1,126 @@
-document.getElementById('app').innerHTML = `
-  <table id="inputTable" border="1" cellpadding="5">
-    <tr>
-      <th>Type</th>
-      <th>Bearing (D.MMSS)</th>
-      <th>Distance / Arc Len (m)</th>
-      <th>Radius (m)</th>
-      <th>Dir (R/L)</th>
-      <th>Action</th>
-    </tr>
-  </table>
-  <button onclick="addRow()">Add Line</button>
-  <button onclick="calculate()">Calculate</button>
-  <pre id="output"></pre>
-`;
-
-function addRow() {
-  const table = document.getElementById('inputTable');
-  const row = table.insertRow();
-  row.innerHTML = `
-    <td><select><option value="straight">Straight</option><option value="curve">Curve</option></select></td>
-    <td><input type="text" placeholder="e.g. 90.3021" /></td>
-    <td><input type="number" step="0.01" /></td>
-    <td><input type="number" step="0.01" /></td>
-    <td><input type="text" maxlength="1" /></td>
-    <td><button onclick="removeRow(this)">Delete</button></td>
-  `;
+function dmsToRadians(dms) {
+    let deg = Math.floor(dms);
+    let min = Math.floor((dms - deg) * 100);
+    let sec = (((dms - deg) * 100) - min) * 100;
+    return (deg + min / 60 + sec / 3600) * Math.PI / 180;
 }
 
-function removeRow(btn) {
-  const row = btn.parentNode.parentNode;
-  row.parentNode.removeChild(row);
+function computePoints() {
+    const rows = document.querySelectorAll("table tr.data-row");
+    const points = [];
+    let x = 0;
+    let y = 0;
+    points.push({ x, y });
+
+    rows.forEach(row => {
+        const type = row.querySelector("select").value;
+        const bearing = parseFloat(row.cells[1].querySelector("input").value);
+        const length = parseFloat(row.cells[2].querySelector("input").value);
+        const radius = parseFloat(row.cells[3].querySelector("input").value);
+        const dir = row.cells[4].querySelector("input").value.toUpperCase();
+
+        if (type === "Straight") {
+            const angle = dmsToRadians(bearing);
+            x += length * Math.sin(angle);
+            y += length * Math.cos(angle);
+            points.push({ x, y });
+        } else if (type === "Curve") {
+            if (!radius || !length || isNaN(bearing)) return;
+
+            const centralAngle = length / radius;
+            const chordLength = 2 * radius * Math.sin(centralAngle / 2);
+            const chordBearing = dir === "R"
+                ? dmsToRadians(bearing) + centralAngle / 2
+                : dmsToRadians(bearing) - centralAngle / 2;
+
+            x += chordLength * Math.sin(chordBearing);
+            y += chordLength * Math.cos(chordBearing);
+            points.push({ x, y });
+        }
+    });
+
+    return points;
 }
 
-function dmmssToDecimal(dmmss) {
-  const deg = Math.floor(dmmss);
-  const min = Math.floor((dmmss - deg) * 100);
-  const sec = (((dmmss - deg) * 100) - min) * 100;
-  return deg + min / 60 + sec / 3600;
-}
-
-function calculate() {
-  let points = [{ x: 0, y: 0 }];
-  let sumE = 0, sumN = 0, totalArea = 0;
-
-  const table = document.getElementById('inputTable');
-  for (let i = 1; i < table.rows.length; i++) {
-    const row = table.rows[i];
-    const type = row.cells[0].querySelector('select').value;
-    const bearing = parseFloat(row.cells[1].querySelector('input').value);
-    const distArc = parseFloat(row.cells[2].querySelector('input').value);
-    const radius = parseFloat(row.cells[3].querySelector('input').value);
-    const dir = row.cells[4].querySelector('input').value.toUpperCase();
-    const last = points[points.length - 1];
-
-    if (type === 'straight') {
-      if (isNaN(bearing) || isNaN(distArc)) continue;
-      const angle = dmmssToDecimal(bearing) * (Math.PI / 180);
-      const dE = distArc * Math.sin(angle);
-      const dN = distArc * Math.cos(angle);
-      sumE += dE;
-      sumN += dN;
-      points.push({ x: last.x + dE, y: last.y + dN });
-    } else if (type === 'curve') {
-      if (isNaN(bearing) || isNaN(distArc) || isNaN(radius) || (dir !== 'R' && dir !== 'L')) continue;
-
-      const tangentRad = dmmssToDecimal(bearing) * (Math.PI / 180);
-      const delta = distArc / radius;
-
-      const centerAngle = dir === 'R' ? tangentRad - Math.PI / 2 : tangentRad + Math.PI / 2;
-      const cx = last.x + radius * Math.cos(centerAngle);
-      const cy = last.y + radius * Math.sin(centerAngle);
-
-      const startAngle = Math.atan2(last.y - cy, last.x - cx);
-      const endAngle = dir === 'R' ? startAngle - delta : startAngle + delta;
-
-      const arcSegments = 20;
-      for (let j = 1; j <= arcSegments; j++) {
-        const theta = startAngle + (endAngle - startAngle) * (j / arcSegments);
-        const arcX = cx + radius * Math.cos(theta);
-        const arcY = cy + radius * Math.sin(theta);
-        points.push({ x: arcX, y: arcY });
-      }
-
-      const end = points[points.length - 1];
-      sumE += end.x - last.x;
-      sumN += end.y - last.y;
+function calculateArea(points) {
+    let area = 0;
+    for (let i = 0; i < points.length - 1; i++) {
+        area += (points[i].x * points[i + 1].y) - (points[i + 1].x * points[i].y);
     }
-  }
-
-  for (let i = 0; i < points.length - 1; i++) {
-    totalArea += (points[i].x * points[i + 1].y - points[i + 1].x * points[i].y);
-  }
-
-  totalArea = Math.abs(totalArea / 2);
-  const closure = Math.sqrt(sumE ** 2 + sumN ** 2);
-  document.getElementById('output').innerText = `Closure error: ${closure.toFixed(3)} m\\nArea: ${totalArea.toFixed(3)} m²`;
-
-  drawPolygon(points);
+    return Math.abs(area / 2);
 }
 
 function drawPolygon(points) {
-  const canvas = document.getElementById('plotCanvas');
-  const ctx = canvas.getContext('2d');
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  let minX = Math.min(...points.map(p => p.x));
-  let maxX = Math.max(...points.map(p => p.x));
-  let minY = Math.min(...points.map(p => p.y));
-  let maxY = Math.max(...points.map(p => p.y));
+    if (points.length < 2) return;
 
-  const margin = 40;
-  const scaleX = (canvas.width - 2 * margin) / (maxX - minX || 1);
-  const scaleY = (canvas.height - 2 * margin) / (maxY - minY || 1);
-  const scale = Math.min(scaleX, scaleY);
+    const padding = 50;
+    const allX = points.map(p => p.x);
+    const allY = points.map(p => p.y);
+    const minX = Math.min(...allX);
+    const maxX = Math.max(...allX);
+    const minY = Math.min(...allY);
+    const maxY = Math.max(...allY);
 
-  ctx.beginPath();
-  ctx.moveTo((points[0].x - minX) * scale + margin, canvas.height - ((points[0].y - minY) * scale + margin));
-  for (let i = 1; i < points.length; i++) {
-    ctx.lineTo((points[i].x - minX) * scale + margin, canvas.height - ((points[i].y - minY) * scale + margin));
-  }
+    const scaleX = (canvas.width - padding * 2) / (maxX - minX || 1);
+    const scaleY = (canvas.height - padding * 2) / (maxY - minY || 1);
+    const scale = Math.min(scaleX, scaleY);
 
-  ctx.strokeStyle = "blue";
-  ctx.lineWidth = 2;
-  ctx.closePath();
-  ctx.stroke();
+    const offsetX = padding - minX * scale;
+    const offsetY = padding - minY * scale;
 
-  ctx.fillStyle = "red";
-  for (let pt of points) {
     ctx.beginPath();
-    ctx.arc((pt.x - minX) * scale + margin, canvas.height - ((pt.y - minY) * scale + margin), 3, 0, 2 * Math.PI);
-    ctx.fill();
-  }
+    ctx.strokeStyle = "blue";
+    ctx.fillStyle = "red";
+
+    for (let i = 0; i < points.length; i++) {
+        const px = points[i].x * scale + offsetX;
+        const py = canvas.height - (points[i].y * scale + offsetY);
+
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+    }
+
+    ctx.closePath();
+    ctx.stroke();
+
+    for (let i = 0; i < points.length; i++) {
+        const px = points[i].x * scale + offsetX;
+        const py = canvas.height - (points[i].y * scale + offsetY);
+        ctx.beginPath();
+        ctx.arc(px, py, 2, 0, 2 * Math.PI);
+        ctx.fill();
+    }
 }
+
+document.getElementById("calculateBtn").addEventListener("click", () => {
+    const points = computePoints();
+    const start = points[0];
+    const end = points[points.length - 1];
+    const closureError = Math.hypot(end.x - start.x, end.y - start.y);
+    const area = calculateArea(points);
+    document.getElementById("result").innerText = `Closure error: ${closureError.toFixed(3)} m\nArea: ${area.toFixed(3)} m²`;
+    drawPolygon(points);
+});
+
+document.getElementById("addLineBtn").addEventListener("click", () => {
+    const table = document.querySelector("table");
+    const newRow = table.insertRow();
+    newRow.className = "data-row";
+    newRow.innerHTML = `
+        <td>
+            <select>
+                <option>Straight</option>
+                <option>Curve</option>
+            </select>
+        </td>
+        <td><input type="text"></td>
+        <td><input type="text"></td>
+        <td><input type="text"></td>
+        <td><input type="text"></td>
+        <td><button onclick="this.closest('tr').remove()">Delete</button></td>
+    `;
+});
