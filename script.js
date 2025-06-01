@@ -1,4 +1,3 @@
-
 document.getElementById('app').innerHTML = `
   <table id="inputTable" border="1" cellpadding="5">
     <tr>
@@ -18,14 +17,14 @@ document.getElementById('app').innerHTML = `
 function addRow() {
   const table = document.getElementById('inputTable');
   const row = table.insertRow();
-  row.innerHTML = \`
+  row.innerHTML = `
     <td><select><option value="straight">Straight</option><option value="curve">Curve</option></select></td>
     <td><input type="text" placeholder="e.g. 90.3021" /></td>
     <td><input type="number" step="0.01" /></td>
     <td><input type="number" step="0.01" /></td>
     <td><input type="text" maxlength="1" /></td>
     <td><button onclick="removeRow(this)">Delete</button></td>
-  \`;
+  `;
 }
 
 function removeRow(btn) {
@@ -59,14 +58,14 @@ function calculate() {
       const angle = dmmssToDecimal(bearing) * (Math.PI / 180);
       const dE = distArc * Math.sin(angle);
       const dN = distArc * Math.cos(angle);
-      sumE += dE; sumN += dN;
+      sumE += dE;
+      sumN += dN;
       points.push({ x: last.x + dE, y: last.y + dN });
     } else if (type === 'curve') {
       if (isNaN(bearing) || isNaN(distArc) || isNaN(radius) || (dir !== 'R' && dir !== 'L')) continue;
 
       const tangentRad = dmmssToDecimal(bearing) * (Math.PI / 180);
       const delta = distArc / radius;
-      const deflection = delta / 2;
 
       const centerAngle = dir === 'R' ? tangentRad - Math.PI / 2 : tangentRad + Math.PI / 2;
       const cx = last.x + radius * Math.cos(centerAngle);
@@ -74,10 +73,10 @@ function calculate() {
 
       const startAngle = Math.atan2(last.y - cy, last.x - cx);
       const endAngle = dir === 'R' ? startAngle - delta : startAngle + delta;
-      const arcSegments = 20;
 
+      const arcSegments = 20;
       for (let j = 1; j <= arcSegments; j++) {
-        const theta = startAngle + (endAngle - startAngle) * j / arcSegments;
+        const theta = startAngle + (endAngle - startAngle) * (j / arcSegments);
         const arcX = cx + radius * Math.cos(theta);
         const arcY = cy + radius * Math.sin(theta);
         points.push({ x: arcX, y: arcY });
@@ -92,9 +91,10 @@ function calculate() {
   for (let i = 0; i < points.length - 1; i++) {
     totalArea += (points[i].x * points[i + 1].y - points[i + 1].x * points[i].y);
   }
+
   totalArea = Math.abs(totalArea / 2);
   const closure = Math.sqrt(sumE ** 2 + sumN ** 2);
-  document.getElementById('output').innerText = \`Closure error: \${closure.toFixed(3)} m\nArea: \${totalArea.toFixed(3)} m²\`;
+  document.getElementById('output').innerText = `Closure error: ${closure.toFixed(3)} m\\nArea: ${totalArea.toFixed(3)} m²`;
 
   drawPolygon(points);
 }
