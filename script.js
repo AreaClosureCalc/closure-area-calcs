@@ -1,3 +1,4 @@
+
 document.getElementById('app').innerHTML = `
   <table id="inputTable" border="1" cellpadding="5">
     <tr>
@@ -62,14 +63,21 @@ function calculate() {
       points.push({ x: last.x + dE, y: last.y + dN });
     } else if (type === 'curve') {
       if (isNaN(bearing) || isNaN(distArc) || isNaN(radius) || (dir !== 'R' && dir !== 'L')) continue;
-      const theta = distArc / radius;
-      const tangent = dmmssToDecimal(bearing) * (Math.PI / 180);
-      const chord = 2 * radius * Math.sin(theta / 2);
-      const chordBearing = dir === 'R' ? tangent - theta / 2 : tangent + theta / 2;
-      const dE = chord * Math.sin(chordBearing);
-      const dN = chord * Math.cos(chordBearing);
-      sumE += dE; sumN += dN;
-      points.push({ x: last.x + dE, y: last.y + dN });
+      const deltaAngle = distArc / radius;
+      const tangentRad = dmmssToDecimal(bearing) * (Math.PI / 180);
+      const centerAngle = dir === 'R' ? tangentRad - Math.PI / 2 : tangentRad + Math.PI / 2;
+      const cx = last.x + radius * Math.cos(centerAngle);
+      const cy = last.y + radius * Math.sin(centerAngle);
+      const startAngle = Math.atan2(last.y - cy, last.x - cx);
+      const endAngle = dir === 'R' ? startAngle - deltaAngle : startAngle + deltaAngle;
+      const arcSegments = 10;
+      for (let j = 1; j <= arcSegments; j++) {
+        const theta = startAngle + (endAngle - startAngle) * j / arcSegments;
+        points.push({ x: cx + radius * Math.cos(theta), y: cy + radius * Math.sin(theta) });
+      }
+      const end = points[points.length - 1];
+      sumE += end.x - last.x;
+      sumN += end.y - last.y;
     }
   }
 
@@ -88,16 +96,21 @@ function drawPolygon(points) {
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+  let minX = Math.min(...points.map(p => p.x));
+  let maxX = Math.max(...points.map(p => p.x));
+  let minY = Math.min(...points.map(p => p.y));
+  let maxY = Math.max(...points.map(p => p.y));
+
   const margin = 40;
-  const scale = 10;
-  const offsetX = canvas.width / 2;
-  const offsetY = canvas.height / 2;
+  const scaleX = (canvas.width - 2 * margin) / (maxX - minX || 1);
+  const scaleY = (canvas.height - 2 * margin) / (maxY - minY || 1);
+  const scale = Math.min(scaleX, scaleY);
 
   ctx.beginPath();
-  ctx.moveTo(points[0].x * scale + offsetX, -points[0].y * scale + offsetY);
+  ctx.moveTo((points[0].x - minX) * scale + margin, canvas.height - ((points[0].y - minY) * scale + margin));
 
   for (let i = 1; i < points.length; i++) {
-    ctx.lineTo(points[i].x * scale + offsetX, -points[i].y * scale + offsetY);
+    ctx.lineTo((points[i].x - minX) * scale + margin, canvas.height - ((points[i].y - minY) * scale + margin));
   }
 
   ctx.strokeStyle = "blue";
@@ -105,11 +118,10 @@ function drawPolygon(points) {
   ctx.closePath();
   ctx.stroke();
 
-  // Draw points
   ctx.fillStyle = "red";
   for (let pt of points) {
     ctx.beginPath();
-    ctx.arc(pt.x * scale + offsetX, -pt.y * scale + offsetY, 3, 0, 2 * Math.PI);
+    ctx.arc((pt.x - minX) * scale + margin, canvas.height - ((pt.y - minY) * scale + margin), 3, 0, 2 * Math.PI);
     ctx.fill();
   }
 }
