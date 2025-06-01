@@ -184,4 +184,83 @@ function calculate() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   const scale = 2;
-  const offsetX =
+  const offsetX = 300;
+  const offsetY = 300;
+
+  for (let i = 0; i < lines.length; i++) {
+    let pt1 = coords[i];
+    let pt2 = coords[i + 1];
+    let x1 = offsetX + (pt1.east - coords[0].east) * scale;
+    let y1 = offsetY - (pt1.north - coords[0].north) * scale;
+    let x2 = offsetX + (pt2.east - coords[0].east) * scale;
+    let y2 = offsetY - (pt2.north - coords[0].north) * scale;
+
+    if (lines[i].type === 'Curve') {
+      // Draw actual arc between pt1 and pt2, using radius, direction, and chord bearing
+      let chordLen = Math.sqrt((pt2.east - pt1.east) ** 2 + (pt2.north - pt1.north) ** 2);
+      let chordBrgRad = dmsToRadians(lines[i].bearing);
+      let radius = lines[i].radius;
+      let arcLen = lines[i].distArc;
+      let delta = arcLen / radius;
+      let sign = lines[i].dir === "R" ? 1 : -1;
+
+      // Midpoint of chord
+      let mx = (pt1.east + pt2.east) / 2;
+      let my = (pt1.north + pt2.north) / 2;
+
+      // Perpendicular to chord for center
+      let perpAzimuth = chordBrgRad + sign * Math.PI / 2;
+      // Distance from midpoint to center
+      let h = Math.abs(radius * Math.cos(delta / 2));
+      let dx = h * Math.sin(perpAzimuth);
+      let dy = h * Math.cos(perpAzimuth);
+
+      let cx = mx + dx;
+      let cy = my + dy;
+
+      // Start and end angles
+      let startAngle = Math.atan2(pt1.east - cx, pt1.north - cy);
+      let endAngle = Math.atan2(pt2.east - cx, pt2.north - cy);
+
+      // Direction
+      let anticlockwise = sign === -1;
+
+      ctx.beginPath();
+      ctx.arc(
+        offsetX + (cx - coords[0].east) * scale,
+        offsetY - (cy - coords[0].north) * scale,
+        Math.abs(radius * scale),
+        startAngle,
+        endAngle,
+        anticlockwise
+      );
+      ctx.strokeStyle = 'blue';
+      ctx.stroke();
+    } else {
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.strokeStyle = 'blue';
+      ctx.stroke();
+    }
+  }
+
+  coords.forEach(pt => {
+    const x = offsetX + (pt.east - coords[0].east) * scale;
+    const y = offsetY - (pt.north - coords[0].north) * scale;
+    ctx.beginPath();
+    ctx.arc(x, y, 2, 0, 2 * Math.PI);
+    ctx.fillStyle = 'red';
+    ctx.fill();
+  });
+}
+
+// Auto-populate with a sample on load
+window.onload = () => {
+  addLine('Straight', '359.5222', '15.830');
+  addLine('Straight', '112.1549', '74.890');
+  addLine('Straight', '90.2412', '35.735');
+  addLine('Straight', '90.2412', '0.1');
+  addLine('Straight', '179.5220', '13.129');
+  addLine('Curve', '283.8511', '108.283', '206.106', 'R');
+};
