@@ -8,6 +8,7 @@
 <body>
   <h1>Lot Closure Calculator</h1>
 
+  <!-- INPUT TABLE -->
   <table id="inputTable">
     <tr>
       <th>Type</th>
@@ -19,16 +20,24 @@
     </tr>
   </table>
 
-  <div class="button‐row">
-    <!-- The onclick attributes call the global functions addLine() and calculate() -->
-    <button type="button" onclick="addLine()">Add Line</button>
-    <button type="button" onclick="calculate()">Calculate</button>
-  </div>
+  <!-- BUTTONS (give them IDs so we can attach event listeners reliably) -->
+  <button id="addLineBtn" type="button">Add Line</button>
+  <button id="calcBtn"    type="button">Calculate</button>
 
+  <!-- OUTPUT PRE (for the text report) -->
   <pre id="output"></pre>
+
+  <!-- CANVAS (for drawing) -->
   <canvas id="canvas" width="600" height="600"></canvas>
 
-  <!-- Always load script.js at the very end so addLine() and calculate() are in global scope -->
+  <!-- 1) Load your script.js first (so addLine() and calculate() exist globally) -->
   <script src="script.js"></script>
+
+  <!-- 2) Then attach click‐listeners to the buttons -->
+  <script>
+    // If script.js has successfully defined addLine() & calculate(), these will work.
+    document.getElementById('addLineBtn').addEventListener('click', addLine);
+    document.getElementById('calcBtn').addEventListener   ('click', calculate);
+  </script>
 </body>
 </html>
