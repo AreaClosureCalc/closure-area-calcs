@@ -19,13 +19,16 @@
     </tr>
   </table>
 
-  <!-- Inline onclick ensures the functions in script.js are invoked directly -->
-  <button onclick="addLine()">Add Line</button>
-  <button onclick="calculate()">Calculate</button>
+  <div class="button‐row">
+    <!-- The onclick attributes call the global functions addLine() and calculate() -->
+    <button type="button" onclick="addLine()">Add Line</button>
+    <button type="button" onclick="calculate()">Calculate</button>
+  </div>
 
   <pre id="output"></pre>
   <canvas id="canvas" width="600" height="600"></canvas>
 
+  <!-- Always load script.js at the very end so addLine() and calculate() are in global scope -->
   <script src="script.js"></script>
 </body>
 </html>
