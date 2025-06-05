@@ -106,9 +106,7 @@ function calculate() {
   report.push('    ---    -------    -------       ------   -----   ------------   -----------');
 
   // Arrays to hold curve parameters for drawing
-  const curveCenters = [];
-  const curveRadii   = [];
-  const curveAngles  = [];
+  const curveData = [];
 
   // Helper: convert D.MMSS to decimal degrees
   function dmsToDecimalLocal(dms) {
@@ -161,9 +159,7 @@ function calculate() {
         `${(idx+1).toString().padStart(5)}    ${'Line'.padEnd(7)}  ${dmsToDMSstrLocal(azDeg).padStart(11)}   ${length.toFixed(3).padStart(7)}  ${front.padEnd(5)}  ${next.north.toFixed(3).padStart(13)}  ${next.east.toFixed(3).padStart(11)}`
       );
 
-      curveCenters.push(null);
-      curveRadii.push(null);
-      curveAngles.push(null);
+      curveData.push({ type: 'straight' });
 
     } else {
       // ---- Curve segment (Radial‐Chord) ----
@@ -216,25 +212,16 @@ function calculate() {
       const centerE = midE + h * Math.cos(perpDirRad);
       const centerN = midN + h * Math.sin(perpDirRad);
 
-      // Compute startAngle & endAngle relative to center
-      let startAngle = Math.atan2(last.north - centerN, last.east - centerE);
-      let endAngle   = Math.atan2(next.north - centerN, next.east - centerE);
-
-      if (sign === 1) {
-        // Right turn: ensure we draw the clockwise minor arc
-        if (endAngle > startAngle) {
-          endAngle -= 2 * Math.PI;
-        }
-      } else {
-        // Left turn: ensure we draw the counterclockwise minor arc
-        if (endAngle < startAngle) {
-          endAngle += 2 * Math.PI;
-        }
-      }
-
-      curveCenters.push({ east: centerE, north: centerN });
-      curveRadii.push(R);
-      curveAngles.push({ start: startAngle, end: endAngle, anticlockwise: (sign === -1) });
+      // Store curve data for drawing
+      curveData.push({
+        type: 'curve',
+        center: { east: centerE, north: centerN },
+        radius: R,
+        startPoint: { east: last.east, north: last.north },
+        endPoint: { east: next.east, north: next.north },
+        direction: line.dir,
+        deltaRad: deltaRad
+      });
 
       // Compute RAD→EC to include in the report
       let radToEc = Az_bc_c - 180 + (sign * deltaDeg);
@@ -250,7 +237,7 @@ function calculate() {
     }
   });
 
-  // 4) Compute “shoelace” area of the straight‐chord polygon
+  // 4) Compute "shoelace" area of the straight‐chord polygon
   let shoelace = 0;
   for (let i = 0; i < coords.length; i++) {
     const j = (i + 1) % coords.length;
@@ -291,17 +278,35 @@ function calculate() {
   coords.forEach(pt => {
     allWorldPoints.push({ east: pt.east, north: pt.north });
   });
-  lines.forEach((line, i) => {
-    if (line.type === 'Curve') {
-      const C = curveCenters[i];
-      const R = curveRadii[i];
-      const A = curveAngles[i];
-      if (!C) return;
-      for (let k = 0; k <= 50; k++) {
-        const t = k / 50;
-        const ang = A.start + (A.end - A.start) * t;
-        const sE = C.east  + R * Math.cos(ang);
-        const sN = C.north + R * Math.sin(ang);
+
+  // Add points along curves for better bounding box calculation
+  curveData.forEach(curve => {
+    if (curve.type === 'curve') {
+      // Add several points along the arc for bounding box calculation
+      for (let k = 0; k <= 20; k++) {
+        const t = k / 20;
+        const startAngle = Math.atan2(curve.startPoint.north - curve.center.north, curve.startPoint.east - curve.center.east);
+        const endAngle = Math.atan2(curve.endPoint.north - curve.center.north, curve.endPoint.east - curve.center.east);
+        
+        let angle;
+        if (curve.direction === 'R') {
+          // Right turn (clockwise)
+          if (endAngle > startAngle) {
+            angle = startAngle + t * (endAngle - startAngle - 2 * Math.PI);
+          } else {
+            angle = startAngle + t * (endAngle - startAngle);
+          }
+        } else {
+          // Left turn (counterclockwise)
+          if (endAngle < startAngle) {
+            angle = startAngle + t * (endAngle - startAngle + 2 * Math.PI);
+          } else {
+            angle = startAngle + t * (endAngle - startAngle);
+          }
+        }
+        
+        const sE = curve.center.east + curve.radius * Math.cos(angle);
+        const sN = curve.center.north + curve.radius * Math.sin(angle);
         allWorldPoints.push({ east: sE, north: sN });
       }
     }
@@ -332,57 +337,46 @@ function calculate() {
   function toCanvasY(n) { return cMidY - ((n - midN) * scale); }
 
   // Draw each segment
-  lines.forEach((line, i) => {
+  curveData.forEach((segmentData, i) => {
     const P1 = coords[i];
     const P2 = coords[i + 1];
-    const x1 = toCanvasX(P1.east);
-    const y1 = toCanvasY(P1.north);
-    const x2 = toCanvasX(P2.east);
-    const y2 = toCanvasY(P2.north);
 
-if (line.type === 'Curve') {
-  const C = curveCenters[i];
-  const R = curveRadii[i];
-  const BC = coords[i];     // Beginning of Curve (start point)
-  const EC = coords[i + 1]; // End of Curve (end point)
-
-  // Calculate canvas coordinates of center, BC, EC
-  const cX = toCanvasX(C.east);
-  const cY = toCanvasY(C.north);
-  const bcX = toCanvasX(BC.east);
-  const bcY = toCanvasY(BC.north);
-  const ecX = toCanvasX(EC.east);
-  const ecY = toCanvasY(EC.north);
-
-  // Recalculate angles explicitly in canvas coordinates
-  let startAngle = Math.atan2(bcY - cY, bcX - cX);
-  let endAngle = Math.atan2(ecY - cY, ecX - cX);
-
-  // Determine shortest arc (minor arc)
-  const anticlockwise = curveAngles[i].anticlockwise;
-  
-  if (anticlockwise && endAngle < startAngle) {
-    endAngle += 2 * Math.PI;
-  } else if (!anticlockwise && endAngle > startAngle) {
-    endAngle -= 2 * Math.PI;
-  }
-
-  // Draw the correct arc connecting BC and EC
-  ctx.beginPath();
-  ctx.arc(cX, cY, R * scale, startAngle, endAngle, anticlockwise);
-  ctx.strokeStyle = 'blue';
-  ctx.lineWidth = 1;
-  ctx.stroke();
-}
-
-
-    } else {
+    if (segmentData.type === 'straight') {
       // STRAIGHT LINE SEGMENT
+      const x1 = toCanvasX(P1.east);
+      const y1 = toCanvasY(P1.north);
+      const x2 = toCanvasX(P2.east);
+      const y2 = toCanvasY(P2.north);
+      
       ctx.beginPath();
       ctx.moveTo(x1, y1);
       ctx.lineTo(x2, y2);
       ctx.strokeStyle = 'blue';
-      ctx.lineWidth   = 1;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    } else {
+      // CURVE SEGMENT
+      const curve = segmentData;
+      const centerX = toCanvasX(curve.center.east);
+      const centerY = toCanvasY(curve.center.north);
+      const canvasRadius = curve.radius * scale;
+      
+      // Calculate start and end angles in canvas coordinates
+      const startAngle = Math.atan2(toCanvasY(curve.startPoint.north) - centerY, toCanvasX(curve.startPoint.east) - centerX);
+      const endAngle = Math.atan2(toCanvasY(curve.endPoint.north) - centerY, toCanvasX(curve.endPoint.east) - centerX);
+      
+      // Draw the arc
+      ctx.beginPath();
+      if (curve.direction === 'R') {
+        // Right turn (clockwise) - use clockwise arc
+        ctx.arc(centerX, centerY, canvasRadius, startAngle, endAngle, false);
+      } else {
+        // Left turn (counterclockwise) - use counterclockwise arc
+        ctx.arc(centerX, centerY, canvasRadius, startAngle, endAngle, true);
+      }
+      
+      ctx.strokeStyle = 'blue';
+      ctx.lineWidth = 2;
       ctx.stroke();
     }
   });
@@ -392,7 +386,7 @@ if (line.type === 'Curve') {
     const px = toCanvasX(pt.east);
     const py = toCanvasY(pt.north);
     ctx.beginPath();
-    ctx.arc(px, py, 2, 0, 2 * Math.PI);
+    ctx.arc(px, py, 3, 0, 2 * Math.PI);
     ctx.fillStyle = 'red';
     ctx.fill();
   });
