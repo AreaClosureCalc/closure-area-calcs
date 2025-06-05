@@ -19,8 +19,9 @@
     </tr>
   </table>
 
-  <button id="addLineBtn">Add Line</button>
-  <button id="calcBtn">Calculate</button>
+  <!-- Use inline onclick so there’s no dependency on addEventListener wiring -->
+  <button onclick="addLine()">Add Line</button>
+  <button onclick="calculate()">Calculate</button>
 
   <pre id="output"></pre>
   <canvas id="canvas" width="600" height="600"></canvas>
