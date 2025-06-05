@@ -340,43 +340,41 @@ function calculate() {
     const x2 = toCanvasX(P2.east);
     const y2 = toCanvasY(P2.north);
 
-    if (line.type === 'Curve') {
-      // CORRECTED CURVE DRAWING WITH ctx.arc
-      const C = curveCenters[i]; // { east: centerE, north: centerN }
-      const R = curveRadii[i];   // radius in world‐units
-      const BC = coords[i];      // BC world point
-      const EC = coords[i + 1];  // EC world point
+if (line.type === 'Curve') {
+  const C = curveCenters[i];
+  const R = curveRadii[i];
+  const BC = coords[i];     // Beginning of Curve (start point)
+  const EC = coords[i + 1]; // End of Curve (end point)
 
-      // Recompute geometric start/end angles
-      let startAngle = Math.atan2(BC.north - C.north, BC.east - C.east);
-      let endAngle   = Math.atan2(EC.north - C.north, EC.east - C.east);
-      const anticlockwise = curveAngles[i].anticlockwise;
+  // Calculate canvas coordinates of center, BC, EC
+  const cX = toCanvasX(C.east);
+  const cY = toCanvasY(C.north);
+  const bcX = toCanvasX(BC.east);
+  const bcY = toCanvasY(BC.north);
+  const ecX = toCanvasX(EC.east);
+  const ecY = toCanvasY(EC.north);
 
-      if (anticlockwise) {
-        if (endAngle <= startAngle) {
-          endAngle += 2 * Math.PI;
-        }
-      } else {
-        if (endAngle >= startAngle) {
-          endAngle -= 2 * Math.PI;
-        }
-      }
+  // Recalculate angles explicitly in canvas coordinates
+  let startAngle = Math.atan2(bcY - cY, bcX - cX);
+  let endAngle = Math.atan2(ecY - cY, ecX - cX);
 
-      // Draw arc
-      const cX = toCanvasX(C.east);
-      const cY = toCanvasY(C.north);
-      ctx.beginPath();
-      ctx.arc(
-        cX,
-        cY,
-        R * scale,
-        startAngle,
-        endAngle,
-        anticlockwise
-      );
-      ctx.strokeStyle = 'blue';
-      ctx.lineWidth   = 1;
-      ctx.stroke();
+  // Determine shortest arc (minor arc)
+  const anticlockwise = curveAngles[i].anticlockwise;
+  
+  if (anticlockwise && endAngle < startAngle) {
+    endAngle += 2 * Math.PI;
+  } else if (!anticlockwise && endAngle > startAngle) {
+    endAngle -= 2 * Math.PI;
+  }
+
+  // Draw the correct arc connecting BC and EC
+  ctx.beginPath();
+  ctx.arc(cX, cY, R * scale, startAngle, endAngle, anticlockwise);
+  ctx.strokeStyle = 'blue';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+}
+
 
     } else {
       // STRAIGHT LINE SEGMENT
