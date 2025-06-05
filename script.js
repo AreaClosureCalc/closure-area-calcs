@@ -250,7 +250,7 @@ function calculate() {
     }
   });
 
-  // 4) Compute “shoelace” area of the straight‐chord polygon
+  // 4) Compute "shoelace" area of the straight‐chord polygon
   let shoelace = 0;
   for (let i = 0; i < coords.length; i++) {
     const j = (i + 1) % coords.length;
@@ -331,7 +331,7 @@ function calculate() {
   function toCanvasX(e) { return cMidX + ((e - midE) * scale); }
   function toCanvasY(n) { return cMidY - ((n - midN) * scale); }
 
-  // Now draw each segment, using corrected arc logic
+  // Now draw each segment
   lines.forEach((line, i) => {
     const P1 = coords[i];
     const P2 = coords[i + 1];
@@ -341,13 +341,20 @@ function calculate() {
     const y2 = toCanvasY(P2.north);
 
     if (line.type === 'Curve') {
-      // CORRECTED CURVE DRAWING WITH ctx.arc
-      const C = curveCenters[i];  // { east, north }
-      const R = curveRadii[i];    // world‐radius
-      const BC = coords[i];       // BC world point
-      const EC = coords[i + 1];   // EC world point
+      // Draw the CHORD (straight line from BC to EC) in BLUE
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.strokeStyle = 'blue';
+      ctx.lineWidth = 2;
+      ctx.stroke();
 
-      // Convert center and endpoints to canvas coords
+      // Draw the ARC in YELLOW (optional - for visualization)
+      const C = curveCenters[i];
+      const R = curveRadii[i];
+      const BC = coords[i];
+      const EC = coords[i + 1];
+
       const cX  = toCanvasX(C.east);
       const cY  = toCanvasY(C.north);
       const bcX = toCanvasX(BC.east);
@@ -355,19 +362,16 @@ function calculate() {
       const ecX = toCanvasX(EC.east);
       const ecY = toCanvasY(EC.north);
 
-      // Calculate geometric angles from +X axis
       let startAngle = Math.atan2(bcY - cY, bcX - cX);
       let endAngle   = Math.atan2(ecY - cY, ecX - cX);
       const anticlockwise = curveAngles[i].anticlockwise;
 
-      // Ensure minor arc
       if (anticlockwise && endAngle < startAngle) {
         endAngle += 2 * Math.PI;
       } else if (!anticlockwise && endAngle > startAngle) {
         endAngle -= 2 * Math.PI;
       }
 
-      // Draw the curve
       ctx.beginPath();
       ctx.arc(
         cX,
@@ -377,17 +381,17 @@ function calculate() {
         endAngle,
         anticlockwise
       );
-      ctx.strokeStyle = 'blue';
-      ctx.lineWidth   = 1;
+      ctx.strokeStyle = 'orange';
+      ctx.lineWidth = 1;
       ctx.stroke();
 
     } else {
-      // STRAIGHT LINE SEGMENT
+      // STRAIGHT LINE SEGMENT in BLUE
       ctx.beginPath();
       ctx.moveTo(x1, y1);
       ctx.lineTo(x2, y2);
       ctx.strokeStyle = 'blue';
-      ctx.lineWidth   = 1;
+      ctx.lineWidth = 2;
       ctx.stroke();
     }
   });
@@ -397,7 +401,7 @@ function calculate() {
     const px = toCanvasX(pt.east);
     const py = toCanvasY(pt.north);
     ctx.beginPath();
-    ctx.arc(px, py, 2, 0, 2 * Math.PI);
+    ctx.arc(px, py, 3, 0, 2 * Math.PI);
     ctx.fillStyle = 'red';
     ctx.fill();
   });
