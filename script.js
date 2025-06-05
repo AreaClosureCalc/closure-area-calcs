@@ -77,7 +77,8 @@ function calculate() {
   let area = 0;
   let arcAreaCorrection = 0;
 
-  report.push('Lot Closure Report - Lot : ArterialHwy\n=================================');
+  report.push('Lot Closure Report - Lot : ArterialHwy');
+  report.push('=================================');
   report.push('file- C:\\Users\\czari\\...\\lc_ArterialHwy.txt');
   report.push('Thursday, May 29, 2025, 2:43:59p.m.\n');
   report.push(`Starting location (North, East) = ( ${startNorth.toFixed(3)}, ${startEast.toFixed(3)} )\n`);
@@ -94,7 +95,7 @@ function calculate() {
   for (let idx = 0; idx < lines.length; idx++) {
     let last = coords[coords.length - 1];
     let next = {};
-    let az = 0, length = 0, segType = '', arcString = '', front = 'No';
+    let az = 0, length = 0, segType = '', front = 'No';
 
     if (lines[idx].type === 'Straight') {
       segType = 'Line';
@@ -115,35 +116,43 @@ function calculate() {
       curveAngles.push(null);
     } else if (lines[idx].type === 'Curve') {
       segType = 'Curve';
-      let chordBrg = lines[idx].bearing;
+      let tanBrg = lines[idx].bearing;       // tangent bearing in decimal degrees
       let arcLen = lines[idx].distArc;
       let radius = lines[idx].radius;
       let dir = lines[idx].dir;
 
+      // central angle in radians and degrees
       let deltaRad = arcLen / radius;
       let deltaDeg = deltaRad * 180 / Math.PI;
-      let chordLen = 2 * radius * Math.sin(deltaRad / 2);
-      let chordBrgRad = dmsToRadians(chordBrg);
 
-      // Advance by chord at chord bearing
+      // chord length using radial chord method
+      let chordLen = 2 * radius * Math.sin(deltaRad / 2);
+
+      // chord bearing equals tangent bearing plus half the central angle (right or left)
+      let chordBrg = tanBrg + (dir === 'R' ? (deltaDeg / 2) : -(deltaDeg / 2));
+      if (chordBrg < 0) chordBrg += 360;
+      if (chordBrg >= 360) chordBrg -= 360;
+
+      // compute end-of-curve coordinates by advancing from BC (which is last)
+      let chordBrgRad = dmsToRadians(chordBrg);
       let dE = chordLen * Math.sin(chordBrgRad);
       let dN = chordLen * Math.cos(chordBrgRad);
       next.north = last.north + dN;
       next.east = last.east + dE;
       coords.push(next);
 
-      // Traverse distance is arc length
+      // traverse distance is arc length
       totalTraverseDistance += arcLen;
 
-      // Area correction (arc segment area, signed by R/L)
-      let sign = dir === "R" ? 1 : -1;
+      // area correction for curved segment (signed by direction)
+      let sign = dir === 'R' ? 1 : -1;
       let segArea = sign * (0.5 * radius * radius * (deltaRad - Math.sin(deltaRad)));
       arcAreaCorrection += segArea;
 
-      // For drawing arc
+      // compute center of curvature for drawing
       let midE = (last.east + next.east) / 2;
       let midN = (last.north + next.north) / 2;
-      let perpAz = chordBrgRad + sign * Math.PI / 2;
+      let perpAz = dmsToRadians(tanBrg) + (sign * Math.PI / 2);
       let h = radius * Math.cos(deltaRad / 2);
       let centerE = midE + h * Math.sin(perpAz);
       let centerN = midN + h * Math.cos(perpAz);
@@ -152,16 +161,16 @@ function calculate() {
       let endAngle = Math.atan2(next.east - centerE, next.north - centerN);
       let anticlockwise = sign === -1;
 
-      curveCenters.push({east: centerE, north: centerN});
+      curveCenters.push({ east: centerE, north: centerN });
       curveRadii.push(radius);
-      curveAngles.push({start: startAngle, end: endAngle, anticlockwise});
+      curveAngles.push({ start: startAngle, end: endAngle, anticlockwise });
 
-      // Use arcLen for total distance, chordLen for geometry, arc area correction for area
+      // report line and curve details
       report.push(
         `${(idx + 1).toString().padStart(3)}    ${segType.padEnd(7)}  ${dmsToDMSstr(chordBrg).padStart(9)}   ${chordLen.toFixed(3).padStart(7)}  ${front.padEnd(5)}  ${next.north.toFixed(3).padStart(13)}  ${next.east.toFixed(9)}`
       );
       report.push(
-        `ARC= ${arcLen.toFixed(3)}, RAD= ${radius}, DELTA= ${dmsToDMSstr(deltaDeg)}`
+        `TANGENT= ${tanBrg.toFixed(4)}, ARC= ${arcLen.toFixed(3)}, R= ${radius.toFixed(3)}, DELTA= ${dmsToDMSstr(deltaDeg)}`
       );
       report.push(
         `ADD_ARC_AREA = ${Math.abs(segArea).toFixed(3)}`
@@ -169,16 +178,16 @@ function calculate() {
     }
   }
 
-  // Shoelace area (for chord geometry)
+  // shoelace formula for straight segments
   for (let i = 0; i < coords.length - 1; i++) {
     area += (coords[i].east * coords[i + 1].north) - (coords[i + 1].east * coords[i].north);
   }
   area = Math.abs(area / 2);
 
-  // Add sum of arc segment areas
+  // final area including curve corrections
   let totalArea = area + arcAreaCorrection;
 
-  // Misclosure (end to start)
+  // misclosure computations
   let end = coords[coords.length - 1];
   let closureE = startEast - end.east;
   let closureN = startNorth - end.north;
@@ -199,7 +208,7 @@ function calculate() {
 
   output.textContent = report.join('\n');
 
-  // --- Drawing: draw lines and arcs ---
+  // --- Drawing: draw lines and curves ---
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   const scale = 2;
