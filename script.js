@@ -205,9 +205,11 @@ function calculate() {
       const midN = (last.north + next.north) / 2;
 
       // Perpendicular direction = chordBrgRad ± 90°
+      // For right turn, center is to the right of chord direction
+      // For left turn, center is to the left of chord direction
       const perpDirRad = (line.dir === 'R')
-                       ? (chordBrgRad + Math.PI/2)
-                       : (chordBrgRad - Math.PI/2);
+                       ? (chordBrgRad - Math.PI/2)  // Right turn: subtract 90°
+                       : (chordBrgRad + Math.PI/2); // Left turn: add 90°
 
       // Distance from midpoint to center
       const h = R * Math.cos(deltaRad / 2);
