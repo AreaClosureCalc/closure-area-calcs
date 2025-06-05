@@ -80,8 +80,8 @@ function calculate() {
   const ctx = canvas.getContext('2d');
 
   // Hard‐coded starting coordinates
-  const startNorth = 5439174.781;
-  const startEast = 536593.552;
+  const startNorth = 500000.000;
+  const startEast = 100000.000;
 
   // Read table rows into "lines" array
   const lines = [];
@@ -130,7 +130,7 @@ function calculate() {
       totalTraverseDistance += length;
 
       report.push(
-        `${(idx + 1).toString().padStart(5)}    ${'Line'.padEnd(7)}  ${dmsToDMSstr(azimuthDeg).padStart(11)}   ${length.toFixed(3).padStart(7)}  ${front.padEnd(5)}  ${next.north.toFixed(3).padStart(13)}  ${next.east.toFixed(9)}`
+        `${(idx + 1).toString().padStart(5)}    ${'Line'.padEnd(7)}  ${dmsToDMSstr(azimuthDeg).padStart(11)}   ${length.toFixed(3).padStart(7)}  ${front.padEnd(5)}  ${next.north.toFixed(3).padStart(13)}  ${next.east.toFixed(3)}`
       );
 
       curveCenters.push(null);
