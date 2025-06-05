@@ -6,7 +6,7 @@ function dmsToDecimal(dms) {
   return deg + (min / 60) + (sec / 3600);
 }
 
-// Convert a decimal‐degrees value (e.g. 283.851388…) into "D°MM'SS"" format
+// Convert a decimal‐degrees value into "D°MM'SS"" format
 function dmsToDMSstr(decimalDeg) {
   let deg = Math.floor(decimalDeg);
   let rem = decimalDeg - deg;
@@ -14,7 +14,7 @@ function dmsToDMSstr(decimalDeg) {
   let min = Math.floor(totalMin);
   let sec = Math.round((totalMin - min) * 60);
 
-  // Handle rounding cases where seconds or minutes might reach 60
+  // Handle rounding pushing seconds or minutes to 60
   if (sec === 60) {
     sec = 0;
     min += 1;
@@ -34,7 +34,7 @@ function bearingFromDelta(dx, dy) {
   return angle;
 }
 
-// Append a new row to the HTML table (defaults to a blank "Straight")
+// Append a new row to the table (either Straight or Curve)
 function addLine(type = 'Straight', bearing = '', distance = '', radius = '', dir = '') {
   const inputTable = document.getElementById('inputTable');
   const row = inputTable.insertRow();
@@ -67,59 +67,54 @@ function addLine(type = 'Straight', bearing = '', distance = '', radius = '', di
   cellAction.appendChild(button);
 }
 
-// The main "Calculate" function: builds the traverse, computes area, misclosure, then draws it.
+// Main calculation & drawing
 function calculate() {
   const inputTable = document.getElementById('inputTable');
   const output     = document.getElementById('output');
   const canvas     = document.getElementById('canvas');
   const ctx        = canvas.getContext('2d');
 
-  // --------------------------------------------
-  // 1) Hard‐coded starting coordinate: N=500000, E=100000
-  // --------------------------------------------
+  // 1) Starting coordinates: N = 500000, E = 100000
   const startNorth = 500000;
   const startEast  = 100000;
 
-  // 2) Read every row of the table (skipping the header) into a "lines" array
+  // 2) Read all rows into "lines" array
   const lines = [];
   for (let i = 1; i < inputTable.rows.length; i++) {
     const row         = inputTable.rows[i];
-    const type        = row.cells[0].firstChild.value;             // "Straight" or "Curve"
+    const type        = row.cells[0].firstChild.value;            // "Straight" or "Curve"
     const bearingDMS  = parseFloat(row.cells[1].firstChild.value); // D.MMSS
-    const distArc     = parseFloat(row.cells[2].firstChild.value); // distance (m) or arc length (m)
-    const radius      = parseFloat(row.cells[3].firstChild.value); // radius (m), only used if Curve
+    const distArc     = parseFloat(row.cells[2].firstChild.value); // length (m) or arc length (m)
+    const radius      = parseFloat(row.cells[3].firstChild.value); // R (m) if curve
     const dir         = row.cells[4].firstChild.value.trim().toUpperCase(); // "R" or "L"
     lines.push({ type, bearingDMS, distArc, radius, dir });
   }
 
-  // 3) Build up coords[] by traversing each segment in order
+  // 3) Build coords[] by traversing each segment
   const coords = [{ north: startNorth, east: startEast }];
   let totalTraverseDistance = 0;
   let arcAreaCorrection     = 0;
 
-  // Prepare the text report header
+  // Prepare text report
   const report = [];
   report.push('    Leg    Segment    Azimuth       Length   Front   End_Northing   End_Easting');
   report.push('    ---    -------    -------       ------   -----   ------------   -----------');
 
-  // Arrays for curve‐drawing parameters (one entry per segment)
-  const curveCenters = []; // will hold { east, north } for each curve segment
-  const curveRadii   = []; // will hold R for each curve
-  const curveAngles  = []; // will hold { start, end, anticlockwise } for each curve
+  // Arrays for curve‐drawing parameters
+  const curveCenters = [];
+  const curveRadii   = [];
+  const curveAngles  = [];
 
-  // Iterate over each line/curve definition
   lines.forEach((line, idx) => {
     const last = coords[coords.length - 1];
     let next = {};
     const front = 'No';
 
     if (line.type === 'Straight') {
-      // ------------------
-      // Straight segment
-      // ------------------
-      const azimuthDeg = dmsToDecimal(line.bearingDMS); // convert D.MMSS → decimal degrees
-      const length     = line.distArc;                  // straight length in meters
-      const angleRad   = azimuthDeg * (Math.PI / 180);
+      // ----- Straight segment -----
+      const azDeg    = dmsToDecimal(line.bearingDMS);
+      const length   = line.distArc;
+      const angleRad = azDeg * (Math.PI / 180);
 
       const dE = length * Math.sin(angleRad);
       const dN = length * Math.cos(angleRad);
@@ -129,47 +124,43 @@ function calculate() {
       coords.push(next);
       totalTraverseDistance += length;
 
-      // Add one line to the report, rounding end coords to 3 decimals
+      // Append to report (end coords to 3 decimals)
       report.push(
-        `${(idx + 1).toString().padStart(5)}    ${'Line'.padEnd(7)}  ${dmsToDMSstr(azimuthDeg).padStart(11)}   ${length.toFixed(3).padStart(7)}  ${front.padEnd(5)}  ${next.north.toFixed(3).padStart(13)}  ${next.east.toFixed(3).padStart(11)}`
+        `${(idx + 1).toString().padStart(5)}    ${'Line'.padEnd(7)}  ${dmsToDMSstr(azDeg).padStart(11)}   ${length.toFixed(3).padStart(7)}  ${front.padEnd(5)}  ${next.north.toFixed(3).padStart(13)}  ${next.east.toFixed(3).padStart(11)}`
       );
 
-      // No curve data for a straight segment:
+      // No curve‐data for a straight
       curveCenters.push(null);
       curveRadii.push(null);
       curveAngles.push(null);
 
     } else {
-      // ------------------
-      // Curve segment (Radial‐Chord method)
-      // ------------------
+      // ----- Curve segment -----
       // Inputs:
-      //   bearingDMS = azimuth from BC → circle center (in D.MMSS)
-      //   distArc    = arc length (m)
-      //   radius     = R (m)
-      //   dir        = 'R' or 'L'
-      const Az_bc_c  = dmsToDecimal(line.bearingDMS);
-      const arcLen   = line.distArc;
-      const R        = line.radius;
-      const sign     = (line.dir === 'R') ? 1 : -1;
+      //   line.bearingDMS = BC→Centre in D.MMSS
+      //   line.distArc    = arc length (m)
+      //   line.radius     = R (m)
+      //   line.dir        = 'R' or 'L'
+      const Az_bc_c = dmsToDecimal(line.bearingDMS);
+      const arcLen  = line.distArc;
+      const R       = line.radius;
+      const sign    = (line.dir === 'R') ? 1 : -1;
 
-      // Compute the central angle Δ in radians & degrees
+      // Central angle Δ
       const deltaRad = arcLen / R;
       const deltaDeg = deltaRad * (180 / Math.PI);
 
-      // Compute the chord length c = 2·R·sin(Δ/2)
+      // Chord length c
       const chordLen = 2 * R * Math.sin(deltaRad / 2);
 
-      // Compute chord bearing from BC → EC:
-      //   If "R": chordBrg = Az_bc_c − (90° − Δ/2)
-      //   If "L": chordBrg = Az_bc_c + (90° − Δ/2)
+      // Compute chord bearing (BC → EC):
       let chordBrg = (line.dir === 'R')
                     ? Az_bc_c - (90 - deltaDeg/2)
                     : Az_bc_c + (90 - deltaDeg/2);
       if (chordBrg < 0) chordBrg += 360;
       if (chordBrg >= 360) chordBrg -= 360;
 
-      // Advance from BC along that chord to find EC
+      // Advance along chord from BC to EC
       const chordBrgRad = chordBrg * (Math.PI / 180);
       const dE = chordLen * Math.sin(chordBrgRad);
       const dN = chordLen * Math.cos(chordBrgRad);
@@ -179,13 +170,11 @@ function calculate() {
       coords.push(next);
       totalTraverseDistance += arcLen;
 
-      // Compute signed area correction for the circular segment
+      // Arc‐segment area correction
       const segArea = sign * (0.5 * R * R * (deltaRad - Math.sin(deltaRad)));
       arcAreaCorrection += segArea;
 
-      // Compute the center of curvature for drawing:
-      //   - Midpoint of BC and EC in real‐world
-      //   - Offset by h = R·cos(Δ/2) at a right angle to the chord
+      // Compute centre of curvature
       const midE    = (last.east + next.east) / 2;
       const midN    = (last.north + next.north) / 2;
       const perpAz  = (Az_bc_c * (Math.PI / 180)) + (sign * Math.PI / 2);
@@ -193,21 +182,21 @@ function calculate() {
       const centerE = midE + h * Math.sin(perpAz);
       const centerN = midN + h * Math.cos(perpAz);
 
-      // Convert BC and EC into startAngle/endAngle for ctx.arc:
-      const startAngle    = Math.atan2(last.east - centerE, last.north - centerN);
-      const endAngle      = Math.atan2(next.east - centerE, next.north - centerN);
+      // *** CORRECTED: use Math.atan2(dy, dx) rather than swapping ***
+      const startAngle    = Math.atan2(last.north - centerN, last.east - centerE);
+      const endAngle      = Math.atan2(next.north - centerN, next.east - centerE);
       const anticlockwise = (sign === -1);
 
       curveCenters.push({ east: centerE, north: centerN });
       curveRadii.push(R);
       curveAngles.push({ start: startAngle, end: endAngle, anticlockwise });
 
-      // Compute RAD→EC = (Az_bc_c − 180° + sign·Δ) mod 360
+      // Compute RAD → EC for the report
       let radToEc = Az_bc_c - 180 + (sign * deltaDeg);
       if (radToEc < 0)   radToEc += 360;
       if (radToEc >= 360) radToEc -= 360;
 
-      // Add two lines for the curve in the report (rounding to 3 decimals)
+      // Append curve to report (rounding to 3 decimals)
       report.push(
         `${(idx + 1).toString().padStart(5)}    ${'Curve'.padEnd(7)}  ${dmsToDMSstr(chordBrg).padStart(11)}   ${chordLen.toFixed(3).padStart(7)}  ${front.padEnd(5)}  ${next.north.toFixed(3).padStart(13)}  ${next.east.toFixed(3).padStart(11)}`
       );
@@ -218,9 +207,7 @@ function calculate() {
     }
   });
 
-  // ------------------------------------------------
-  // 4) Compute "shoelace" area of the straight‐chord polygon
-  // ------------------------------------------------
+  // 4) Shoelace polygon area (with wrap‐around)
   let shoelace = 0;
   for (let i = 0; i < coords.length; i++) {
     const j = (i + 1) % coords.length;
@@ -229,9 +216,7 @@ function calculate() {
   const chordArea = Math.abs(shoelace / 2);
   const totalArea = chordArea + arcAreaCorrection;
 
-  // ------------------------------------------------
-  // 5) Compute misclosure (end to start)
-  // ------------------------------------------------
+  // 5) Misclosure (end back to start)
   const end      = coords[coords.length - 1];
   const closureE = startEast - end.east;
   const closureN = startNorth - end.north;
@@ -239,9 +224,7 @@ function calculate() {
   const miscloseAz = bearingFromDelta(closureE, closureN);
   const eoc = misclose > 0 ? totalTraverseDistance / misclose : 0;
 
-  // ------------------------------------------------
   // 6) Finish the text report
-  // ------------------------------------------------
   report.push('');
   report.push(`Ending location (North, East) = ( ${end.north.toFixed(3)}, ${end.east.toFixed(3)} )\n`);
   report.push(`Total Distance          : ${totalTraverseDistance.toFixed(3)}`);
@@ -254,15 +237,12 @@ function calculate() {
   report.push('');
   report.push('      ***********');
 
-  // Dump the text‐report into the <pre> block
   output.textContent = report.join('\n');
 
-  // --------------------------------------------
-  // 7) DRAW on the <canvas> (auto‐scaled & centered)
-  // --------------------------------------------
+  // 7) DRAW on <canvas> (auto‐scaled & centered)
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // 7a) Find bounding‐box of all traverse vertices
+  // 7a) Compute bounding‐box of all coords
   const allEast  = coords.map(pt => pt.east);
   const allNorth = coords.map(pt => pt.north);
   const minE = Math.min(...allEast);
@@ -270,26 +250,26 @@ function calculate() {
   const minN = Math.min(...allNorth);
   const maxN = Math.max(...allNorth);
 
-  const spanE        = (maxE - minE) || 1; // avoid zero‐span if all E are identical
-  const spanN        = (maxN - minN) || 1; // avoid zero‐span if all N are identical
-  const marginFactor = 1.1;               // 10% extra margin
+  const spanE        = (maxE - minE) || 1;
+  const spanN        = (maxN - minN) || 1;
+  const marginFactor = 1.1;
 
-  // 7b) Compute a uniform scale so the entire shape fits in the canvas
+  // 7b) Uniform scale so everything fits
   const scaleX = canvas.width  / (spanE * marginFactor);
   const scaleY = canvas.height / (spanN * marginFactor);
   const scale  = Math.min(scaleX, scaleY);
 
-  // 7c) Find world‐center of bounding‐box and canvas center
+  // 7c) World‐center and canvas center
   const midE       = (minE + maxE) / 2;
   const midN       = (minN + maxN) / 2;
   const canvasMidX = canvas.width  / 2;
   const canvasMidY = canvas.height / 2;
 
-  // 7d) Helpers: world (east,north) → canvas (x,y)
+  // 7d) Helpers to convert (east,north) → (x,y)
   const toCanvasX = e => canvasMidX + ((e - midE) * scale);
   const toCanvasY = n => canvasMidY - ((n - midN) * scale);
 
-  // 7e) Draw each segment in order
+  // 7e) Draw each segment
   lines.forEach((line, i) => {
     const P1 = coords[i];
     const P2 = coords[i + 1];
@@ -303,19 +283,20 @@ function calculate() {
       const C = curveCenters[i];
       const R = curveRadii[i];
       const A = curveAngles[i];
-      if (!C) return; // safety check
+      if (!C) return;
 
       const cx = toCanvasX(C.east);
       const cy = toCanvasY(C.north);
-      const r  = R * scale; // pixel radius
+      const r  = R * scale;
 
       ctx.beginPath();
       ctx.arc(cx, cy, Math.abs(r), A.start, A.end, A.anticlockwise);
       ctx.strokeStyle = 'blue';
       ctx.lineWidth = 1;
       ctx.stroke();
+
     } else {
-      // Draw a straight line segment
+      // Draw straight line
       ctx.beginPath();
       ctx.moveTo(x1, y1);
       ctx.lineTo(x2, y2);
@@ -325,7 +306,7 @@ function calculate() {
     }
   });
 
-  // 7f) Draw red dots at each traverse vertex
+  // 7f) Draw red dots at each vertex
   coords.forEach(pt => {
     const px = toCanvasX(pt.east);
     const py = toCanvasY(pt.north);
@@ -336,9 +317,8 @@ function calculate() {
   });
 }
 
-// On page load, you can (optionally) add a default set of lines.
+// Optionally pre‐populate on load (uncomment if desired)
 window.onload = () => {
-  // If you want to pre‐populate with example legs, uncomment below:
   // addLine('Straight', '359.5222', '15.830');
   // addLine('Straight', '112.1529', '74.890');
   // addLine('Straight', '90.2412', '35.735');
