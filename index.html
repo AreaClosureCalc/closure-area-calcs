@@ -8,11 +8,6 @@
 <body>
   <h1>Lot Closure Calculator</h1>
 
-  <!--
-    1.  The table must have an initial header row with exactly this
-        structure, and the <tbody> is omitted because we insert rows
-        by JavaScript.
-  -->
   <table id="inputTable">
     <tr>
       <th>Type</th>
@@ -24,29 +19,12 @@
     </tr>
   </table>
 
-  <!--
-    2.  These buttons call our two global functions addLine() and calculate().
-        Because we load script.js at the end of the body, they will be defined
-        by the time the user clicks them.
-  -->
   <button onclick="addLine()">Add Line</button>
   <button onclick="calculate()">Calculate</button>
 
-  <!--
-    3.  This <pre> is where the text‐report will appear.
-  -->
   <pre id="output"></pre>
-
-  <!--
-    4.  The <canvas> is where we draw the traverse.
-  -->
   <canvas id="canvas" width="600" height="600"></canvas>
 
-  <!--
-    5.  Finally, we load our script.js at the very end of the body,
-        so that `addLine()` and `calculate()` exist by the time the
-        buttons are clicked.
-  -->
   <script src="script.js"></script>
 </body>
 </html>
