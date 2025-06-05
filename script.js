@@ -77,17 +77,9 @@ function calculate() {
   let area = 0;
   let arcAreaCorrection = 0;
 
-  report.push('Lot Closure Report - Lot : ArterialHwy');
-  report.push('=================================');
-  report.push('file- C:\\Users\\czari\\Association of BC Land Surveyors\\Practice - Documents\\Audit and Practice Review\\01 Current Plan reviews\\2025 plan reviews - Nigel\\March\\1-Muralt, Peter complete\\Prelim\\CAD and Closures\\991calcsEPP135184.msj\\lc_ArterialHwy.txt');
-  report.push('Thursday, May 29, 2025, 2:43:59p.m.\n');
-  report.push(`Starting location (North, East) = ( ${startNorth.toFixed(3)}, ${startEast.toFixed(3)} )\n`);
-  report.push('(In the table below, the Length of Curves refers to the chord length.');
-  report.push('                and the Bearing of Curves refers to the chord bearing.)\n');
   report.push('    Leg    Segment    Azimuth       Length   Front   End_Northing   End_Easting');
   report.push('    ---    -------    -------       ------   -----   ------------   -----------');
 
-  // For canvas arc plotting:
   let curveCenters = [];
   let curveRadii = [];
   let curveAngles = [];
@@ -116,40 +108,30 @@ function calculate() {
       curveAngles.push(null);
     } else if (lines[idx].type === 'Curve') {
       segType = 'Curve';
-      let tanBrg = lines[idx].bearing;       // tangent bearing in decimal degrees
+      let tanBrg = lines[idx].bearing;
       let arcLen = lines[idx].distArc;
       let radius = lines[idx].radius;
       let dir = lines[idx].dir;
 
-      // central angle in radians and degrees
       let deltaRad = arcLen / radius;
       let deltaDeg = deltaRad * 180 / Math.PI;
-
-      // chord length using radial chord method
       let chordLen = 2 * radius * Math.sin(deltaRad / 2);
-
-      // chord bearing equals tangent bearing plus half the central angle (right or left)
       let chordBrg = tanBrg + (dir === 'R' ? (deltaDeg / 2) : -(deltaDeg / 2));
       if (chordBrg < 0) chordBrg += 360;
       if (chordBrg >= 360) chordBrg -= 360;
 
-      // compute end-of-curve coordinates by advancing from BC (which is last)
       let chordBrgRad = dmsToRadians(chordBrg);
       let dE = chordLen * Math.sin(chordBrgRad);
       let dN = chordLen * Math.cos(chordBrgRad);
       next.north = last.north + dN;
       next.east = last.east + dE;
       coords.push(next);
-
-      // traverse distance is arc length
       totalTraverseDistance += arcLen;
 
-      // area correction for curved segment (signed by direction)
       let sign = dir === 'R' ? 1 : -1;
       let segArea = sign * (0.5 * radius * radius * (deltaRad - Math.sin(deltaRad)));
       arcAreaCorrection += segArea;
 
-      // compute center of curvature for drawing
       let midE = (last.east + next.east) / 2;
       let midN = (last.north + next.north) / 2;
       let perpAz = dmsToRadians(tanBrg) + (sign * Math.PI / 2);
@@ -165,7 +147,6 @@ function calculate() {
       curveRadii.push(radius);
       curveAngles.push({ start: startAngle, end: endAngle, anticlockwise });
 
-      // report line and curve details
       report.push(
         `${(idx + 1).toString().padStart(5)}    ${segType.padEnd(7)}  ${dmsToDMSstr(chordBrg).padStart(11)}   ${chordLen.toFixed(3).padStart(7)}  ${front.padEnd(5)}  ${next.north.toFixed(3).padStart(13)}  ${next.east.toFixed(9)}`
       );
@@ -184,16 +165,12 @@ function calculate() {
     }
   }
 
-  // shoelace formula for straight segments
   for (let i = 0; i < coords.length - 1; i++) {
     area += (coords[i].east * coords[i + 1].north) - (coords[i + 1].east * coords[i].north);
   }
   area = Math.abs(area / 2);
-
-  // final area including curve corrections
   let totalArea = area + arcAreaCorrection;
 
-  // misclosure computations
   let end = coords[coords.length - 1];
   let closureE = startEast - end.east;
   let closureN = startNorth - end.north;
@@ -214,7 +191,6 @@ function calculate() {
 
   output.textContent = report.join('\n');
 
-  // --- Drawing: draw lines and curves ---
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   const scale = 2;
@@ -271,6 +247,5 @@ window.onload = () => {
   addLine('Straight', '90.2412', '35.735');
   addLine('Straight', '90.2412', '0.100');
   addLine('Straight', '179.5220', '13.129');
-  // Corrected Curve entry: arc length 109.569 (from plan), radius 206.106, direction R
   addLine('Curve', '283.5106', '109.569', '206.106', 'R');
 };
