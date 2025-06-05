@@ -391,9 +391,9 @@ function calculate() {
 
 // When the page loads, wire up the buttons
 window.onload = () => {
-  // Ensure “Add Line” and “Calculate” buttons call the correct functions:
   document.getElementById('addLineBtn').addEventListener('click', () => addLine());
-  document.getElementById('calcBtn').addEventListener('click', calculate);
+  document.getElementById('calcBtn').   addEventListener('click', calculate);
+};
 
   // Optionally preload one example Curve row for testing:
   // addLine('Curve','358.3719','109.569','206.106','R');
