@@ -283,110 +283,136 @@ function calculate() {
 
   output.textContent = report.join('\n');
 
-  // 7) DRAW on <canvas> (auto‐scaled & centered)
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+ // … inside your calculate() function, after you have built:
+//    coords[], curveCenters[], curveRadii[], curveAngles[],
+// and after you have computed 'scale', 'toCanvasX', 'toCanvasY', etc. …
 
-  // Build an array of *all* world‐points we will draw:
-  // • Each traverse vertex (coords)
-  // • Each of the 50 sample points along every curve
-  const allWorldPoints = [];
-  coords.forEach(pt => {
-    allWorldPoints.push({ east: pt.east, north: pt.north });
-  });
-  lines.forEach((line, i) => {
-    if (line.type === 'Curve') {
-      const C = curveCenters[i];
-      const R = curveRadii[i];
-      const A = curveAngles[i];
-      if (!C) return;
-      for (let k = 0; k <= 50; k++) {
-        const t = k / 50;
-        const ang = A.start + (A.end - A.start) * t;
-        const sE = C.east  + R * Math.cos(ang);
-        const sN = C.north + R * Math.sin(ang);
-        allWorldPoints.push({ east: sE, north: sN });
-      }
+// 7) DRAW on <canvas> (auto‐scaled & centered)
+ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+// Build a list of ALL world‐points so we can auto‐scale/center.
+// (You probably already have this part—keep it as is.)
+const allWorldPoints = [];
+coords.forEach(pt => {
+  allWorldPoints.push({ east: pt.east, north: pt.north });
+});
+lines.forEach((line, i) => {
+  if (line.type === 'Curve') {
+    // Sample 50 points along the arc to include in the bounding box
+    const C = curveCenters[i];
+    const R = curveRadii[i];
+    const A = curveAngles[i];
+    if (!C) return;
+    for (let k = 0; k <= 50; k++) {
+      const t = k / 50;
+      const ang = A.start + (A.end - A.start) * t;
+      const sE = C.east  + R * Math.cos(ang);
+      const sN = C.north + R * Math.sin(ang);
+      allWorldPoints.push({ east: sE, north: sN });
     }
-  });
+  }
+});
 
-  // Compute bounding box over allWorldPoints
-  const allEastVals  = allWorldPoints.map(p => p.east);
-  const allNorthVals = allWorldPoints.map(p => p.north);
-  const minE = Math.min(...allEastVals);
-  const maxE = Math.max(...allEastVals);
-  const minN = Math.min(...allNorthVals);
-  const maxN = Math.max(...allNorthVals);
+// Compute bounding‐box over allWorldPoints (unchanged)
+const allEastVals  = allWorldPoints.map(p => p.east);
+const allNorthVals = allWorldPoints.map(p => p.north);
+const minE = Math.min(...allEastVals);
+const maxE = Math.max(...allEastVals);
+const minN = Math.min(...allNorthVals);
+const maxN = Math.max(...allNorthVals);
 
-  const spanE = (maxE - minE) || 1;
-  const spanN = (maxN - minN) || 1;
-  const marginFactor = 1.1; // 10% margin
+const spanE = (maxE - minE) || 1;
+const spanN = (maxN - minN) || 1;
+const marginFactor = 1.1;
 
-  // 8) Compute scale so everything fits
-  const scaleX = canvas.width  / (spanE * marginFactor);
-  const scaleY = canvas.height / (spanN * marginFactor);
-  const scale  = Math.min(scaleX, scaleY);
+const scaleX = canvas.width  / (spanE * marginFactor);
+const scaleY = canvas.height / (spanN * marginFactor);
+const scale  = Math.min(scaleX, scaleY);
 
-  // 9) Compute world‐center and canvas center
-  const midE   = (minE + maxE) / 2;
-  const midN   = (minN + maxN) / 2;
-  const cMidX  = canvas.width  / 2;
-  const cMidY  = canvas.height / 2;
+const midE  = (minE + maxE) / 2;
+const midN  = (minN + maxN) / 2;
+const cMidX = canvas.width  / 2;
+const cMidY = canvas.height / 2;
 
-  // 10) Helpers to convert world (east, north) → canvas (x, y)
-  const toCanvasX = e => cMidX + ((e - midE) * scale);
-  const toCanvasY = n => cMidY - ((n - midN) * scale);
+function toCanvasX(e) { return cMidX + ((e - midE) * scale); }
+function toCanvasY(n) { return cMidY - ((n - midN) * scale); }
 
-  // 11) Draw each segment
-  lines.forEach((line, i) => {
-    const P1 = coords[i];
-    const P2 = coords[i + 1];
-    const x1 = toCanvasX(P1.east);
-    const y1 = toCanvasY(P1.north);
-    const x2 = toCanvasX(P2.east);
-    const y2 = toCanvasY(P2.north);
+// Now draw each segment
+lines.forEach((line, i) => {
+  const P1 = coords[i];
+  const P2 = coords[i + 1];
+  const x1 = toCanvasX(P1.east);
+  const y1 = toCanvasY(P1.north);
+  const x2 = toCanvasX(P2.east);
+  const y2 = toCanvasY(P2.north);
 
-    if (line.type === 'Curve') {
-      // Draw the curved segment by sampling 50 points
-      const C = curveCenters[i];
-      const R = curveRadii[i];
-      const A = curveAngles[i];
-      if (!C) return;
+  if (line.type === 'Curve') {
+    // ------- CORRECTED CURVE DRAWING USING ctx.arc -------
+    const C = curveCenters[i]; // { east: centerE, north: centerN }
+    const R = curveRadii[i];   // radius in world‐units
+    // We will recompute startAngle/endAngle geometrically:
+    const BC = coords[i];       // BC point in world coords
+    const EC = coords[i + 1];   // EC point in world coords
 
-      ctx.beginPath();
-      for (let k = 0; k <= 50; k++) {
-        const t = k / 50;
-        const ang = A.start + (A.end - A.start) * t;
-        const sE  = C.east  + R * Math.cos(ang);
-        const sN  = C.north + R * Math.sin(ang);
-        const cx  = toCanvasX(sE);
-        const cy  = toCanvasY(sN);
-        if (k === 0) ctx.moveTo(cx, cy);
-        else         ctx.lineTo(cx, cy);
+    // 1) Compute geometric angles from the positive‐X axis (east):
+    let startAngle = Math.atan2(BC.north - C.north, BC.east - C.east);
+    let endAngle   = Math.atan2(EC.north - C.north, EC.east - C.east);
+
+    // 2) Determine if this is a right‐turn (clockwise) or left‐turn (CCW)
+    //    We stored the “sign” when computing curveAngles[].anticlockwise earlier:
+    const anticlockwise = curveAngles[i].anticlockwise;
+
+    // 3) Force “minor arc” by adjusting endAngle relative to startAngle:
+    if (anticlockwise) {
+      // Left turn: ensure endAngle > startAngle (sweep CCW)
+      if (endAngle <= startAngle) {
+        endAngle += 2 * Math.PI;
       }
-      ctx.strokeStyle = 'blue';
-      ctx.lineWidth = 1;
-      ctx.stroke();
-
     } else {
-      // Draw a straight line segment
-      ctx.beginPath();
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x2, y2);
-      ctx.strokeStyle = 'blue';
-      ctx.lineWidth   = 1;
-      ctx.stroke();
+      // Right turn: ensure endAngle < startAngle (sweep CW)
+      if (endAngle >= startAngle) {
+        endAngle -= 2 * Math.PI;
+      }
     }
-  });
 
-  // 12) Draw red dots at each traverse vertex
-  coords.forEach(pt => {
-    const px = toCanvasX(pt.east);
-    const py = toCanvasY(pt.north);
+    // 4) Convert center to canvas coords:
+    const cX = toCanvasX(C.east);
+    const cY = toCanvasY(C.north);
+
+    // 5) Draw the arc using the computed geometric angles:
     ctx.beginPath();
-    ctx.arc(px, py, 2, 0, 2 * Math.PI);
-    ctx.fillStyle = 'red';
-    ctx.fill();
-  });
+    ctx.arc(
+      cX, cY,
+      R * scale,       // radius in canvas pixels
+      startAngle,
+      endAngle,
+      anticlockwise    // true for CCW (left turn), false for CW (right turn)
+    );
+    ctx.strokeStyle = 'blue';
+    ctx.lineWidth   = 1;
+    ctx.stroke();
+
+  } else {
+    // ------- STRAIGHT LINE SEGMENT -------
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.strokeStyle = 'blue';
+    ctx.lineWidth   = 1;
+    ctx.stroke();
+  }
+});
+
+// Finally, draw red dots at each traverse vertex:
+coords.forEach(pt => {
+  const px = toCanvasX(pt.east);
+  const py = toCanvasY(pt.north);
+  ctx.beginPath();
+  ctx.arc(px, py, 2, 0, 2 * Math.PI);
+  ctx.fillStyle = 'red';
+  ctx.fill();
+});
+
 }
 
 // When the page loads, wire up the buttons
