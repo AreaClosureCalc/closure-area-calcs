@@ -104,9 +104,9 @@ function calculate() {
   report.push('    ---    -------    -------       ------   -----   ------------   -----------');
 
   // Arrays to hold data needed for drawing curves
-  const curveCenters = [];
-  const curveRadii   = [];
-  const curveAngles  = [];
+  const curveCenters = []; // { east, north }
+  const curveRadii   = []; // R
+  const curveAngles  = []; // { start, end, anticlockwise }
 
   lines.forEach((line, idx) => {
     const last = coords[coords.length - 1];
@@ -157,8 +157,9 @@ function calculate() {
       if (chordBrg < 0) chordBrg += 360;
       if (chordBrg >= 360) chordBrg -= 360;
 
-      // Advance from BC along that chord to find EC
       const chordBrgRad = chordBrg * (Math.PI / 180);
+
+      // Advance from BC along that chord to find EC
       const dE = chordLen * Math.sin(chordBrgRad);
       const dN = chordLen * Math.cos(chordBrgRad);
 
@@ -167,31 +168,45 @@ function calculate() {
       coords.push(next);
       totalTraverseDistance += arcLen;
 
-      // Arc‐segment area correction
+      // Compute signed area correction for this arc segment
       const segArea = sign * (0.5 * R * R * (deltaRad - Math.sin(deltaRad)));
       arcAreaCorrection += segArea;
 
-      // Compute center of curvature
-      const midE    = (last.east + next.east) / 2;
-      const midN    = (last.north + next.north) / 2;
-      const perpAz  = (Az_bc_c * (Math.PI / 180)) + (sign * Math.PI / 2);
-      const h       = R * Math.cos(deltaRad / 2);
-      const centerE = midE + h * Math.sin(perpAz);
-      const centerN = midN + h * Math.cos(perpAz);
+      // ----------------------------
+      // Compute center of curvature properly, using the chord direction:
+      // ----------------------------
+      // Midpoint between BC and EC:
+      const midE = (last.east + next.east) / 2;
+      const midN = (last.north + next.north) / 2;
 
-      // Compute correct startAngle/endAngle for the minor arc:
+      // The perpendicular direction is "90° off" the chord bearing:
+      //   For a right turn, center is at (chordBrgRad + 90°)
+      //   For a left turn, center is at (chordBrgRad - 90°)
+      const perpDirRad = (line.dir === 'R')
+                       ? (chordBrgRad + Math.PI/2)
+                       : (chordBrgRad - Math.PI/2);
+
+      // h = R·cos(Δ/2)
+      const h = R * Math.cos(deltaRad / 2);
+
+      // Finally, center of curvature:
+      const centerE = midE + h * Math.cos(perpDirRad);
+      const centerN = midN + h * Math.sin(perpDirRad);
+
+      // ----------------------------
+      // Compute startAngle and endAngle (minor arc)
+      // ----------------------------
       let startAngle = Math.atan2(last.north - centerN, last.east - centerE);
       let endAngle   = Math.atan2(next.north - centerN, next.east - centerE);
 
       if (sign === 1) {
-        // Right curve: if endAngle > startAngle, subtract 2π to get the minor (CW) path
+        // Right curve: draw clockwise minor arc. If endAngle > startAngle, subtract 2π
         if (endAngle > startAngle) endAngle -= 2 * Math.PI;
       } else {
-        // Left curve: if endAngle < startAngle, add 2π to get the minor (CCW) path
+        // Left curve: draw CCW minor arc. If endAngle < startAngle, add 2π
         if (endAngle < startAngle) endAngle += 2 * Math.PI;
       }
 
-      // Store on array for drawing
       curveCenters.push({ east: centerE, north: centerN });
       curveRadii.push(R);
       curveAngles.push({ start: startAngle, end: endAngle, anticlockwise: (sign === -1) });
@@ -343,6 +358,7 @@ function calculate() {
 
 // window.onload can pre‐populate with example lines if you wish
 window.onload = () => {
+  // Uncomment to preload:
   // addLine('Straight', '359.5222', '15.830');
   // addLine('Straight', '112.1529', '74.890');
   // addLine('Straight', '90.2412', '35.735');
