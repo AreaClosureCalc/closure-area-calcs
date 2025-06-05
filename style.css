@@ -3,6 +3,10 @@ body {
   margin: 20px;
 }
 
+h1 {
+  margin-bottom: 10px;
+}
+
 table {
   border-collapse: collapse;
   margin-bottom: 10px;
@@ -24,6 +28,7 @@ button {
   margin-right: 10px;
   padding: 6px 12px;
   cursor: pointer;
+  font-family: "Calibri", sans-serif;
 }
 
 #output {
@@ -34,6 +39,7 @@ button {
   margin-top: 10px;
   height: 200px;
   overflow-y: auto;
+  font-family: "Calibri", sans-serif;
 }
 
 canvas {
