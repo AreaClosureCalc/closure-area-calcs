@@ -2,7 +2,7 @@
 // script.js
 // ======================
 
-// Convert a D.MMSS value (e.g. 358.3719) into true decimal degrees
+// Convert a D.MMSS value (for example 358.3719) into true decimal degrees
 function dmsToDecimal(dms) {
   const deg = Math.floor(dms);
   const min = Math.floor((dms - deg) * 100);
@@ -18,7 +18,6 @@ function dmsToDMSstr(decimalDeg) {
   let min = Math.floor(totalMin);
   let sec = Math.round((totalMin - min) * 60);
 
-  // Handle rounding pushing seconds or minutes to 60
   if (sec === 60) {
     sec = 0;
     min += 1;
@@ -28,10 +27,10 @@ function dmsToDMSstr(decimalDeg) {
     deg += 1;
   }
 
-  return `${deg}°${min.toString().padStart(2,'0')}'${sec.toString().padStart(2,'0')}"`;
+  return `${deg}°${min.toString().padStart(2, '0')}'${sec.toString().padStart(2, '0')}"`;
 }
 
-// Given ΔE = dx and ΔN = dy, compute an azimuth in degrees (0–360)
+// Given ΔE = dx and ΔN = dy, compute an azimuth in degrees from 0 to 360
 function bearingFromDelta(dx, dy) {
   let angle = Math.atan2(dx, dy) * (180 / Math.PI);
   if (angle < 0) angle += 360;
@@ -43,7 +42,7 @@ function addLine(type = 'Straight', bearing = '', distance = '', radius = '', di
   const inputTable = document.getElementById('inputTable');
   const row = inputTable.insertRow();
 
-  // 1) "Type" dropdown cell
+  // Type dropdown cell
   const cellType = row.insertCell();
   const select = document.createElement('select');
   ['Straight', 'Curve'].forEach(t => {
@@ -55,7 +54,7 @@ function addLine(type = 'Straight', bearing = '', distance = '', radius = '', di
   });
   cellType.appendChild(select);
 
-  // 2) Next four cells: Bearing, Distance/Arc, Radius, Direction
+  // Next four cells: Bearing, Distance/Arc, Radius, Direction
   [bearing, distance, radius, dir].forEach(val => {
     const cell = row.insertCell();
     const input = document.createElement('input');
@@ -64,7 +63,7 @@ function addLine(type = 'Straight', bearing = '', distance = '', radius = '', di
     cell.appendChild(input);
   });
 
-  // 3) "Delete" button cell
+  // Delete button cell
   const cellAction = row.insertCell();
   const btn = document.createElement('button');
   btn.textContent = 'Delete';
@@ -79,23 +78,23 @@ function calculate() {
   const canvas     = document.getElementById('canvas');
   const ctx        = canvas.getContext('2d');
 
-  // 1) Hard‐coded starting coordinates
+  // Starting coordinates (hard‐coded)
   const startNorth = 500000;
   const startEast  = 100000;
 
-  // 2) Read table rows into "lines" array
+  // Read table rows into "lines" array
   const lines = [];
   for (let i = 1; i < inputTable.rows.length; i++) {
-    const row         = inputTable.rows[i];
-    const type        = row.cells[0].firstChild.value;             // "Straight" or "Curve"
-    const bearingDMS  = parseFloat(row.cells[1].firstChild.value); // D.MMSS
-    const distArc     = parseFloat(row.cells[2].firstChild.value); // length or arc length
-    const radius      = parseFloat(row.cells[3].firstChild.value); // R (m) for curves
-    const dir         = row.cells[4].firstChild.value.trim().toUpperCase(); // "R" or "L"
+    const row        = inputTable.rows[i];
+    const type       = row.cells[0].firstChild.value;             
+    const bearingDMS = parseFloat(row.cells[1].firstChild.value);
+    const distArc    = parseFloat(row.cells[2].firstChild.value);
+    const radius     = parseFloat(row.cells[3].firstChild.value);
+    const dir        = row.cells[4].firstChild.value.trim().toUpperCase();
     lines.push({ type, bearingDMS, distArc, radius, dir });
   }
 
-  // 3) Build coordinate list by traversing each line/curve
+  // Build coordinate list by traversing each line or curve
   const coords = [{ north: startNorth, east: startEast }];
   let totalTraverseDistance = 0;
   let arcAreaCorrection     = 0;
@@ -118,7 +117,7 @@ function calculate() {
     return deg + (min / 60) + (sec / 3600);
   }
 
-  // Helper: convert decimal degrees to "D°MM'SS""
+  // Helper: convert decimal degrees to "D°MM'SS"" format
   function dmsToDMSstrLocal(decimalDeg) {
     let deg = Math.floor(decimalDeg);
     let rem = decimalDeg - deg;
@@ -133,18 +132,18 @@ function calculate() {
       min = 0;
       deg += 1;
     }
-    return `${deg}°${min.toString().padStart(2,'0')}'${sec.toString().padStart(2,'0')}"`;
+    return `${deg}°${min.toString().padStart(2, '0')}'${sec.toString().padStart(2, '0')}"`;
   }
 
-  // Loop over each leg/curve
+  // Loop over each leg or curve
   lines.forEach((line, idx) => {
     const last = coords[coords.length - 1];
     let next  = {};
     const front = 'No';
 
     if (line.type === 'Straight') {
-      // ---- Straight segment ----
-      const azDeg = dmsToDecimalLocal(line.bearingDMS);
+      // Straight segment
+      const azDeg  = dmsToDecimalLocal(line.bearingDMS);
       const length = line.distArc;
       const angRad = azDeg * (Math.PI / 180);
 
@@ -156,7 +155,6 @@ function calculate() {
       coords.push(next);
       totalTraverseDistance += length;
 
-      // Add to report (rounded to 3 decimals)
       report.push(
         `${(idx+1).toString().padStart(5)}    ${'Line'.padEnd(7)}  ${dmsToDMSstrLocal(azDeg).padStart(11)}   ${length.toFixed(3).padStart(7)}  ${front.padEnd(5)}  ${next.north.toFixed(3).padStart(13)}  ${next.east.toFixed(3).padStart(11)}`
       );
@@ -166,23 +164,23 @@ function calculate() {
       curveAngles.push(null);
 
     } else {
-      // ---- Curve segment (Radial‐Chord) ----
-      const Az_bc_c = dmsToDecimalLocal(line.bearingDMS); // BC → Centre, decimal degrees
+      // Curve segment using radial‐chord method
+      const Az_bc_c = dmsToDecimalLocal(line.bearingDMS);
       const arcLen  = line.distArc;
       const R       = line.radius;
       const sign    = (line.dir === 'R') ? 1 : -1;
 
-      // Central angle Δ in radians & degrees
+      // Central angle Δ
       const deltaRad = arcLen / R;
       const deltaDeg = deltaRad * (180 / Math.PI);
 
       // Chord length c = 2·R·sin(Δ/2)
       const chordLen = 2 * R * Math.sin(deltaRad / 2);
 
-      // Compute chord bearing (BC→EC)
+      // Compute chord bearing (BC→EC) in degrees
       let chordBrg = (line.dir === 'R')
-                    ? Az_bc_c - (90 - deltaDeg/2)
-                    : Az_bc_c + (90 - deltaDeg/2);
+                    ? Az_bc_c - (90 - deltaDeg / 2)
+                    : Az_bc_c + (90 - deltaDeg / 2);
       chordBrg = ((chordBrg % 360) + 360) % 360;
       const chordBrgRad = chordBrg * (Math.PI / 180);
 
@@ -199,36 +197,42 @@ function calculate() {
       const segArea = sign * (0.5 * R * R * (deltaRad - Math.sin(deltaRad)));
       arcAreaCorrection += segArea;
 
-      // --- Compute circle center by offsetting perpendicular to chord ---
-      // Midpoint between BC and EC:
+      // Compute circle center by offsetting perpendicular to the chord
       const midE = (last.east + next.east) / 2;
       const midN = (last.north + next.north) / 2;
 
-      // Perpendicular direction = chordBrgRad ± 90°
-      // For right turn, center is to the right of chord direction
-      // For left turn, center is to the left of chord direction
-      const perpDirRad = (line.dir === 'R')
-                       ? (chordBrgRad - Math.PI/2)  // Right turn: subtract 90°
-                       : (chordBrgRad + Math.PI/2); // Left turn: add 90°
+      // Unit vector along chord (BC→EC)
+      const chordUnitE = dE / chordLen;
+      const chordUnitN = dN / chordLen;
+
+      // Perpendicular unit vector, depending on turn direction
+      let perpUnitE, perpUnitN;
+      if (line.dir === 'R') {
+        perpUnitE =  chordUnitN;
+        perpUnitN = -chordUnitE;
+      } else {
+        perpUnitE = -chordUnitN;
+        perpUnitN =  chordUnitE;
+      }
 
       // Distance from midpoint to center
       const h = R * Math.cos(deltaRad / 2);
 
       // Final center coordinates
-      const centerE = midE + h * Math.cos(perpDirRad);
-      const centerN = midN + h * Math.sin(perpDirRad);
+      const centerE = midE + perpUnitE * h;
+      const centerN = midN + perpUnitN * h;
 
-      // Compute initial startAngle & endAngle relative to center
+      // Compute startAngle & endAngle around center (math angles)
       let startAngle = Math.atan2(last.north - centerN, last.east - centerE);
       let endAngle   = Math.atan2(next.north - centerN, next.east - centerE);
 
       if (sign === 1) {
-        // Right turn: ensure we draw the clockwise minor arc
+        // Right turn: clockwise minor arc
         if (endAngle > startAngle) {
           endAngle -= 2 * Math.PI;
         }
       } else {
-        // Left turn: ensure we draw the counterclockwise minor arc
+        // Left turn: counterclockwise minor arc
         if (endAngle < startAngle) {
           endAngle += 2 * Math.PI;
         }
@@ -236,9 +240,9 @@ function calculate() {
 
       curveCenters.push({ east: centerE, north: centerN });
       curveRadii.push(R);
-      curveAngles.push({ start: startAngle, end: endAngle, anticlockwise: (sign === -1) });
+      curveAngles.push({ start: startAngle, end: endAngle });
 
-      // Compute RAD→EC to include in the report
+      // Compute RAD→EC bearing for report
       let radToEc = Az_bc_c - 180 + (sign * deltaDeg);
       radToEc = ((radToEc % 360) + 360) % 360;
 
@@ -252,7 +256,7 @@ function calculate() {
     }
   });
 
-  // 4) Compute "shoelace" area of the straight‐chord polygon
+  // Compute “shoelace” area for straight‐chord polygon
   let shoelace = 0;
   for (let i = 0; i < coords.length; i++) {
     const j = (i + 1) % coords.length;
@@ -262,7 +266,7 @@ function calculate() {
   const chordArea = Math.abs(shoelace / 2);
   const totalArea = chordArea + arcAreaCorrection;
 
-  // 5) Compute misclosure (end → start)
+  // Compute misclosure (end → start)
   const endPt    = coords[coords.length - 1];
   const closureE = startEast - endPt.east;
   const closureN = startNorth - endPt.north;
@@ -270,7 +274,7 @@ function calculate() {
   const miscloseAz = bearingFromDelta(closureE, closureN);
   const eoc = misclose > 0 ? totalTraverseDistance / misclose : 0;
 
-  // 6) Finish text report
+  // Finish text report
   report.push('');
   report.push(`Ending location (North, East) = ( ${endPt.north.toFixed(3)}, ${endPt.east.toFixed(3)} )\n`);
   report.push(`Total Distance          : ${totalTraverseDistance.toFixed(3)}`);
@@ -285,10 +289,10 @@ function calculate() {
 
   output.textContent = report.join('\n');
 
-  // 7) DRAW on <canvas> (auto‐scaled & centered)
+  // DRAW on the canvas (auto‐scaled & centered)
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Build a list of ALL world‐points for auto‐scaling
+  // Build a list of all world points (including sampled arc points) for scaling
   const allWorldPoints = [];
   coords.forEach(pt => {
     allWorldPoints.push({ east: pt.east, north: pt.north });
@@ -330,10 +334,14 @@ function calculate() {
   const cMidX  = canvas.width  / 2;
   const cMidY  = canvas.height / 2;
 
-  function toCanvasX(e) { return cMidX + ((e - midE) * scale); }
-  function toCanvasY(n) { return cMidY - ((n - midN) * scale); }
+  function toCanvasX(e) {
+    return cMidX + ((e - midE) * scale);
+  }
+  function toCanvasY(n) {
+    return cMidY - ((n - midN) * scale);
+  }
 
-  // Now draw each segment
+  // Draw each segment
   lines.forEach((line, i) => {
     const P1 = coords[i];
     const P2 = coords[i + 1];
@@ -343,7 +351,7 @@ function calculate() {
     const y2 = toCanvasY(P2.north);
 
     if (line.type === 'Curve') {
-      // Draw the CHORD (straight line from BC to EC) in BLUE
+      // Draw the chord in blue
       ctx.beginPath();
       ctx.moveTo(x1, y1);
       ctx.lineTo(x2, y2);
@@ -351,69 +359,47 @@ function calculate() {
       ctx.lineWidth = 2;
       ctx.stroke();
 
-      // Draw the ARC in ORANGE by sampling points along the arc
+      // Draw the arc in orange using CAD‐style ctx.arc
       const C = curveCenters[i];
       const R = curveRadii[i];
-      const arcLen = line.distArc;
-      
-      // Calculate the central angle in radians
-      const deltaRad = arcLen / R;
-      
-      // Get world coordinates angles from center to BC and EC
-      const BC = coords[i];
-      const EC = coords[i + 1];
-      
-      let startAngleWorld = Math.atan2(BC.north - C.north, BC.east - C.east);
-      let endAngleWorld = Math.atan2(EC.north - C.north, EC.east - C.east);
-      
-      // Ensure we traverse the minor arc in the correct direction
-      const isRightTurn = (line.dir === 'R');
-      
-      if (isRightTurn) {
-        // Right turn: go clockwise from start to end
-        if (endAngleWorld > startAngleWorld) {
-          endAngleWorld -= 2 * Math.PI;
-        }
-      } else {
-        // Left turn: go counterclockwise from start to end
-        if (endAngleWorld < startAngleWorld) {
-          endAngleWorld += 2 * Math.PI;
-        }
-      }
-      
-      // Draw the arc by sampling points
+      const A = curveAngles[i];
+
+      const cX = toCanvasX(C.east);
+      const cY = toCanvasY(C.north);
+      const rCanvas = R * scale;
+
+      const worldStart = Math.atan2(P1.north - C.north, P1.east - C.east);
+      const worldEnd   = Math.atan2(P2.north - C.north, P2.east - C.east);
+
+      const startAng = -worldStart;
+      const endAng   = -worldEnd;
+      const anticlockwise = (line.dir === 'L');
+
       ctx.beginPath();
-      const numPoints = 20;
-      for (let j = 0; j <= numPoints; j++) {
-        const t = j / numPoints;
-        const angle = startAngleWorld + (endAngleWorld - startAngleWorld) * t;
-        const ptE = C.east + R * Math.cos(angle);
-        const ptN = C.north + R * Math.sin(angle);
-        const canvasX = toCanvasX(ptE);
-        const canvasY = toCanvasY(ptN);
-        
-        if (j === 0) {
-          ctx.moveTo(canvasX, canvasY);
-        } else {
-          ctx.lineTo(canvasX, canvasY);
-        }
-      }
+      ctx.arc(
+        cX,
+        cY,
+        rCanvas,
+        startAng,
+        endAng,
+        anticlockwise
+      );
       ctx.strokeStyle = 'orange';
-      ctx.lineWidth = 2;
+      ctx.lineWidth   = 2;
       ctx.stroke();
 
     } else {
-      // STRAIGHT LINE SEGMENT in BLUE
+      // Straight line in blue
       ctx.beginPath();
       ctx.moveTo(x1, y1);
       ctx.lineTo(x2, y2);
       ctx.strokeStyle = 'blue';
-      ctx.lineWidth = 2;
+      ctx.lineWidth   = 2;
       ctx.stroke();
     }
   });
 
-  // Finally, draw red points at each vertex
+  // Draw red points at each vertex
   coords.forEach(pt => {
     const px = toCanvasX(pt.east);
     const py = toCanvasY(pt.north);
@@ -427,7 +413,7 @@ function calculate() {
 // When the page loads, wire up the buttons
 window.onload = () => {
   document.getElementById('addLineBtn').addEventListener('click', () => addLine());
-  document.getElementById('calcBtn').   addEventListener('click', calculate);
+  document.getElementById('calcBtn').addEventListener('click', calculate);
 
   // Optionally preload one example Curve row for testing:
   // addLine('Curve','358.3719','109.569','206.106','R');
