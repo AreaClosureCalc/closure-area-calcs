@@ -351,7 +351,7 @@ function calculate() {
       ctx.lineWidth = 2;
       ctx.stroke();
 
-      // Draw the ARC in YELLOW (optional - for visualization)
+      // Draw the ARC in ORANGE (optional - for visualization)
       const C = curveCenters[i];
       const R = curveRadii[i];
       const BC = coords[i];
@@ -364,14 +364,28 @@ function calculate() {
       const ecX = toCanvasX(EC.east);
       const ecY = toCanvasY(EC.north);
 
+      // Calculate angles from center to BC and EC in canvas coordinates
       let startAngle = Math.atan2(bcY - cY, bcX - cX);
       let endAngle   = Math.atan2(ecY - cY, ecX - cX);
-      const anticlockwise = curveAngles[i].anticlockwise;
-
-      if (anticlockwise && endAngle < startAngle) {
-        endAngle += 2 * Math.PI;
-      } else if (!anticlockwise && endAngle > startAngle) {
-        endAngle -= 2 * Math.PI;
+      
+      // Determine direction based on turn direction
+      const isRightTurn = (line.dir === 'R');
+      
+      // For right turn, we want clockwise arc (anticlockwise = false)
+      // For left turn, we want counterclockwise arc (anticlockwise = true)
+      const anticlockwise = !isRightTurn;
+      
+      // Adjust angles to ensure we draw the minor arc in the correct direction
+      if (isRightTurn) {
+        // Right turn: clockwise, so if endAngle > startAngle, subtract 2π from endAngle
+        while (endAngle > startAngle) {
+          endAngle -= 2 * Math.PI;
+        }
+      } else {
+        // Left turn: counterclockwise, so if endAngle < startAngle, add 2π to endAngle
+        while (endAngle < startAngle) {
+          endAngle += 2 * Math.PI;
+        }
       }
 
       ctx.beginPath();
