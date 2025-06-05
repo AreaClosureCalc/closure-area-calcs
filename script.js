@@ -68,7 +68,7 @@ function addLine(type = 'Straight', bearing = '', distance = '', radius = '', di
   cellAction.appendChild(button);
 }
 
-// Main "Calculate" function: builds the traverse, computes area/misclosure, and draws.
+// Main "Calculate" function
 function calculate() {
   const inputTable = document.getElementById('inputTable');
   const output     = document.getElementById('output');
@@ -104,9 +104,9 @@ function calculate() {
   report.push('    ---    -------    -------       ------   -----   ------------   -----------');
 
   // Arrays to hold data needed for drawing curves
-  const curveCenters = []; // { east, north }
-  const curveRadii   = []; // R
-  const curveAngles  = []; // { start, end, anticlockwise }
+  const curveCenters = [];
+  const curveRadii   = [];
+  const curveAngles  = [];
 
   lines.forEach((line, idx) => {
     const last = coords[coords.length - 1];
@@ -114,11 +114,9 @@ function calculate() {
     const front = 'No';
 
     if (line.type === 'Straight') {
-      // ------------------
-      // Straight segment
-      // ------------------
-      const azDeg    = dmsToDecimal(line.bearingDMS); // D.MMSS → decimal degrees
-      const length   = line.distArc;                  // straight length
+      // ----- Straight segment -----
+      const azDeg    = dmsToDecimal(line.bearingDMS);
+      const length   = line.distArc;
       const angleRad = azDeg * (Math.PI / 180);
 
       const dE = length * Math.sin(angleRad);
@@ -139,14 +137,7 @@ function calculate() {
       curveAngles.push(null);
 
     } else {
-      // ------------------
-      // Curve segment (Radial‐Chord method)
-      // ------------------
-      // Inputs:
-      //   line.bearingDMS = BC → Centre in D.MMSS
-      //   line.distArc    = arc length (m)
-      //   line.radius     = R (m)
-      //   line.dir        = 'R' or 'L'
+      // ----- Curve segment (Radial‐Chord) -----
       const Az_bc_c = dmsToDecimal(line.bearingDMS);
       const arcLen  = line.distArc;
       const R       = line.radius;
@@ -159,7 +150,7 @@ function calculate() {
       // Chord length c = 2·R·sin(Δ/2)
       const chordLen = 2 * R * Math.sin(deltaRad / 2);
 
-      // Compute chord bearing from BC → EC
+      // Compute chord bearing from BC → EC:
       let chordBrg = (line.dir === 'R')
                     ? Az_bc_c - (90 - deltaDeg/2)
                     : Az_bc_c + (90 - deltaDeg/2);
@@ -176,7 +167,7 @@ function calculate() {
       coords.push(next);
       totalTraverseDistance += arcLen;
 
-      // Compute signed area correction for this arc segment
+      // Arc‐segment area correction
       const segArea = sign * (0.5 * R * R * (deltaRad - Math.sin(deltaRad)));
       arcAreaCorrection += segArea;
 
@@ -188,35 +179,29 @@ function calculate() {
       const centerE = midE + h * Math.sin(perpAz);
       const centerN = midN + h * Math.cos(perpAz);
 
-      // Compute correct start/end angles for the minor arc:
-      //   We use Math.atan2(dy, dx) so that angles are measured from positive‐x.
+      // Compute correct startAngle/endAngle for the minor arc:
       let startAngle = Math.atan2(last.north - centerN, last.east - centerE);
       let endAngle   = Math.atan2(next.north - centerN, next.east - centerE);
 
       if (sign === 1) {
-        // Right curve (CW). We want to draw the minor (clockwise) arc,
-        // so ensure endAngle < startAngle by subtracting 2π if needed.
-        if (endAngle > startAngle) {
-          endAngle -= 2 * Math.PI;
-        }
+        // Right curve: if endAngle > startAngle, subtract 2π to get the minor (CW) path
+        if (endAngle > startAngle) endAngle -= 2 * Math.PI;
       } else {
-        // Left curve (CCW). We want the minor (counterclockwise) arc,
-        // so ensure endAngle > startAngle by adding 2π if needed.
-        if (endAngle < startAngle) {
-          endAngle += 2 * Math.PI;
-        }
+        // Left curve: if endAngle < startAngle, add 2π to get the minor (CCW) path
+        if (endAngle < startAngle) endAngle += 2 * Math.PI;
       }
 
+      // Store on array for drawing
       curveCenters.push({ east: centerE, north: centerN });
       curveRadii.push(R);
       curveAngles.push({ start: startAngle, end: endAngle, anticlockwise: (sign === -1) });
 
-      // Compute RAD→EC = (Az_bc_c − 180 + sign·Δ) mod 360
+      // Compute RAD → EC for the report
       let radToEc = Az_bc_c - 180 + (sign * deltaDeg);
       if (radToEc < 0)   radToEc += 360;
       if (radToEc >= 360) radToEc -= 360;
 
-      // Add to report (rounded to 3 decimals)
+      // Append to report (rounded to 3 decimals)
       report.push(
         `${(idx + 1).toString().padStart(5)}    ${'Curve'.padEnd(7)}  ${dmsToDMSstr(chordBrg).padStart(11)}   ${chordLen.toFixed(3).padStart(7)}  ${front.padEnd(5)}  ${next.north.toFixed(3).padStart(13)}  ${next.east.toFixed(3).padStart(11)}`
       );
@@ -270,7 +255,7 @@ function calculate() {
   // --------------------------------------------
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // 7a) Determine bounding‐box of all coords
+  // 7a) Compute bounding‐box of all coords
   const allEast  = coords.map(pt => pt.east);
   const allNorth = coords.map(pt => pt.north);
   const minE = Math.min(...allEast);
@@ -280,9 +265,9 @@ function calculate() {
 
   const spanE        = (maxE - minE) || 1; // avoid zero span
   const spanN        = (maxN - minN) || 1;
-  const marginFactor = 1.1;               // 10% margin
+  const marginFactor = 1.1;               // 10% extra margin
 
-  // 7b) Compute a uniform scale so the entire traverse fits
+  // 7b) Compute uniform scale so everything fits
   const scaleX = canvas.width  / (spanE * marginFactor);
   const scaleY = canvas.height / (spanN * marginFactor);
   const scale  = Math.min(scaleX, scaleY);
@@ -307,18 +292,29 @@ function calculate() {
     const y2 = toCanvasY(P2.north);
 
     if (line.type === 'Curve') {
-      // Draw the circular arc
+      // Draw the curved segment by sampling 50 points along the true arc
       const C = curveCenters[i];
       const R = curveRadii[i];
       const A = curveAngles[i];
       if (!C) return;
 
-      const cx = toCanvasX(C.east);
-      const cy = toCanvasY(C.north);
-      const r  = R * scale;
-
       ctx.beginPath();
-      ctx.arc(cx, cy, Math.abs(r), A.start, A.end, A.anticlockwise);
+      for (let k = 0; k <= 50; k++) {
+        const t = k / 50;
+        // Interpolate angle between startAngle and endAngle
+        const angle = A.start + (A.end - A.start) * t;
+        // Compute world‐coords of each arc sample point
+        const sampleE = C.east + R * Math.cos(angle);
+        const sampleN = C.north + R * Math.sin(angle);
+        // Convert to canvas coords
+        const cx = toCanvasX(sampleE);
+        const cy = toCanvasY(sampleN);
+        if (k === 0) {
+          ctx.moveTo(cx, cy);
+        } else {
+          ctx.lineTo(cx, cy);
+        }
+      }
       ctx.strokeStyle = 'blue';
       ctx.lineWidth = 1;
       ctx.stroke();
@@ -334,7 +330,7 @@ function calculate() {
     }
   });
 
-  // 7f) Draw red dots at each vertex
+  // 7f) Draw red dots at each traverse vertex
   coords.forEach(pt => {
     const px = toCanvasX(pt.east);
     const py = toCanvasY(pt.north);
@@ -345,7 +341,7 @@ function calculate() {
   });
 }
 
-// window.onload can pre‐populate if desired (commented out by default)
+// window.onload can pre‐populate with example lines if you wish
 window.onload = () => {
   // addLine('Straight', '359.5222', '15.830');
   // addLine('Straight', '112.1529', '74.890');
