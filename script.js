@@ -79,13 +79,13 @@ function calculate() {
 
   report.push('Lot Closure Report - Lot : ArterialHwy');
   report.push('=================================');
-  report.push('file- C:\\Users\\czari\\...\\lc_ArterialHwy.txt');
+  report.push('file- C:\\Users\\czari\\Association of BC Land Surveyors\\Practice - Documents\\Audit and Practice Review\\01 Current Plan reviews\\2025 plan reviews - Nigel\\March\\1-Muralt, Peter complete\\Prelim\\CAD and Closures\\991calcsEPP135184.msj\\lc_ArterialHwy.txt');
   report.push('Thursday, May 29, 2025, 2:43:59p.m.\n');
   report.push(`Starting location (North, East) = ( ${startNorth.toFixed(3)}, ${startEast.toFixed(3)} )\n`);
   report.push('(In the table below, the Length of Curves refers to the chord length.');
   report.push('                and the Bearing of Curves refers to the chord bearing.)\n');
-  report.push(' Leg    Segment    Azimuth       Length   Front   End_Northing   End_Easting');
-  report.push(' ---    -------    -------       ------   -----   ------------   -----------');
+  report.push('    Leg    Segment    Azimuth       Length   Front   End_Northing   End_Easting');
+  report.push('    ---    -------    -------       ------   -----   ------------   -----------');
 
   // For canvas arc plotting:
   let curveCenters = [];
@@ -109,7 +109,7 @@ function calculate() {
       coords.push(next);
       totalTraverseDistance += length;
       report.push(
-        `${(idx + 1).toString().padStart(3)}    ${segType.padEnd(7)}  ${dmsToDMSstr(az).padStart(9)}   ${length.toFixed(3).padStart(7)}  ${front.padEnd(5)}  ${next.north.toFixed(3).padStart(13)}  ${next.east.toFixed(9)}`
+        `${(idx + 1).toString().padStart(5)}    ${segType.padEnd(7)}  ${dmsToDMSstr(az).padStart(11)}   ${length.toFixed(3).padStart(7)}  ${front.padEnd(5)}  ${next.north.toFixed(3).padStart(13)}  ${next.east.toFixed(9)}`
       );
       curveCenters.push(null);
       curveRadii.push(null);
@@ -167,13 +167,19 @@ function calculate() {
 
       // report line and curve details
       report.push(
-        `${(idx + 1).toString().padStart(3)}    ${segType.padEnd(7)}  ${dmsToDMSstr(chordBrg).padStart(9)}   ${chordLen.toFixed(3).padStart(7)}  ${front.padEnd(5)}  ${next.north.toFixed(3).padStart(13)}  ${next.east.toFixed(9)}`
+        `${(idx + 1).toString().padStart(5)}    ${segType.padEnd(7)}  ${dmsToDMSstr(chordBrg).padStart(11)}   ${chordLen.toFixed(3).padStart(7)}  ${front.padEnd(5)}  ${next.north.toFixed(3).padStart(13)}  ${next.east.toFixed(9)}`
       );
       report.push(
-        `TANGENT= ${tanBrg.toFixed(4)}, ARC= ${arcLen.toFixed(3)}, R= ${radius.toFixed(3)}, DELTA= ${dmsToDMSstr(deltaDeg)}`
+        `    ARC= ${arcLen.toFixed(3)}, RAD= ${radius.toFixed(3)}, DELTA= ${dmsToDMSstr(deltaDeg)}`
       );
       report.push(
-        `ADD_ARC_AREA = ${Math.abs(segArea).toFixed(3)}`
+        `    BC_TO_RAD= ${dmsToDMSstr(tanBrg + (dir === 'R' ? (-deltaDeg/2) : (deltaDeg/2)))}`
+      );
+      report.push(
+        `    RAD_TO_EC= ${dmsToDMSstr(tanBrg + (dir === 'R' ? (deltaDeg/2) : (-deltaDeg/2)))}`
+      );
+      report.push(
+        `    ADD_ARC_AREA = ${Math.abs(segArea).toFixed(3)}`
       );
     }
   }
@@ -260,10 +266,11 @@ function calculate() {
 }
 
 window.onload = () => {
-  addLine('Straight', '359.8728', '15.830');
-  addLine('Straight', '112.2581', '74.890');
-  addLine('Straight', '90.4033', '35.735');
-  addLine('Straight', '90.4033', '0.1');
-  addLine('Straight', '179.8722', '13.129');
-  addLine('Curve', '283.8517', '108.283', '206.106', 'R');
+  addLine('Straight', '359.5222', '15.830');
+  addLine('Straight', '112.1529', '74.890');
+  addLine('Straight', '90.2412', '35.735');
+  addLine('Straight', '90.2412', '0.100');
+  addLine('Straight', '179.5220', '13.129');
+  // Corrected Curve entry: arc length 109.569 (from plan), radius 206.106, direction R
+  addLine('Curve', '283.5106', '109.569', '206.106', 'R');
 };
