@@ -52,27 +52,24 @@ canvas#canvas {
 
 /* Print-only rules */
 @media print {
+  /* Hide everything by default */
   body * {
     visibility: hidden;
   }
 
-  #output,
-  #canvas {
-    visibility: visible;
-  }
-
+  /* Show only the report text (no canvas) */
   #output {
+    visibility: visible;
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
+    /* Preserve spacing line-for-line */
     white-space: pre-wrap;
-  }
-
-  #canvas {
-    position: absolute;
-    top: auto;
-    left: 0;
-    margin-top: 1em;
+    /* Ensure it prints from the top with enough margin */
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: none;
   }
 }
