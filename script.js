@@ -223,24 +223,13 @@ function calculate() {
       const centerN = midN + perpUnitN * h;
 
       // Compute startAngle & endAngle around center (math angles)
-      let startAngle = Math.atan2(last.north - centerN, last.east - centerE);
-      let endAngle   = Math.atan2(next.north - centerN, next.east - centerE);
+      const worldStart = Math.atan2(last.north - centerN, last.east - centerE);
+      const worldEnd   = Math.atan2(next.north - centerN, next.east - centerE);
 
-      if (sign === 1) {
-        // Right turn: clockwise minor arc
-        if (endAngle > startAngle) {
-          endAngle -= 2 * Math.PI;
-        }
-      } else {
-        // Left turn: counterclockwise minor arc
-        if (endAngle < startAngle) {
-          endAngle += 2 * Math.PI;
-        }
-      }
-
+      // Save center and radius for drawing
       curveCenters.push({ east: centerE, north: centerN });
       curveRadii.push(R);
-      curveAngles.push({ start: startAngle, end: endAngle });
+      curveAngles.push({ start: worldStart, end: worldEnd, dir: line.dir });
 
       // Compute RAD→EC bearing for report
       let radToEc = Az_bc_c - 180 + (sign * deltaDeg);
@@ -305,6 +294,7 @@ function calculate() {
       if (!C) return;
       for (let k = 0; k <= 50; k++) {
         const t = k / 50;
+        // Interpolate between start and end in math angle
         const ang = A.start + (A.end - A.start) * t;
         const sE = C.east  + R * Math.cos(ang);
         const sN = C.north + R * Math.sin(ang);
@@ -368,12 +358,20 @@ function calculate() {
       const cY = toCanvasY(C.north);
       const rCanvas = R * scale;
 
-      const worldStart = Math.atan2(P1.north - C.north, P1.east - C.east);
-      const worldEnd   = Math.atan2(P2.north - C.north, P2.east - C.east);
+      let startAng = -A.start;
+      let endAng   = -A.end;
+      const anticlockwise = (A.dir === 'L');
 
-      const startAng = -worldStart;
-      const endAng   = -worldEnd;
-      const anticlockwise = (line.dir === 'L');
+      // Adjust endAngle so we draw the minor arc in the correct direction
+      if (anticlockwise) {
+        if (endAng < startAng) {
+          endAng += 2 * Math.PI;
+        }
+      } else {
+        if (endAng > startAng) {
+          endAng -= 2 * Math.PI;
+        }
+      }
 
       ctx.beginPath();
       ctx.arc(
