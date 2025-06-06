@@ -2,35 +2,59 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Lot Closure Calculator</title>
-  <link rel="stylesheet" href="style.css" />
+  <title>Traverse Calculator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    #controls {
+      margin-bottom: 10px;
+    }
+    #controls button {
+      margin-right: 10px;
+      padding: 6px 12px;
+      font-size: 14px;
+    }
+    canvas {
+      border: 1px solid #999;
+      display: block;
+      margin-bottom: 20px;
+    }
+    pre {
+      background-color: #fafafa;
+      border: 1px solid #ddd;
+      padding: 10px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    @media print {
+      /* Hide controls when printing */
+      #controls {
+        display: none;
+      }
+      canvas,
+      pre {
+        width: 100% !important;
+        margin: 0;
+        padding: 0;
+        page-break-inside: avoid;
+      }
+    }
+  </style>
 </head>
 <body>
-  <h1>Lot Closure Calculator</h1>
+  <!-- controls -->
+  <div id="controls">
+    <button id="addLineBtn">Add Line</button>
+    <button id="calcBtn">Calculate</button>
+    <button id="printBtn">Print to PDF</button>
+  </div>
 
-  <!-- Input table -->
-  <table id="inputTable">
-    <tr>
-      <th>Type</th>
-      <th>Bearing (D.MMSS)</th>
-      <th>Distance or Arc Length (m)</th>
-      <th>Radius (m)</th>
-      <th>Direction (L or R)</th>
-      <th>Action</th>
-    </tr>
-  </table>
-
-  <!-- Buttons -->
-  <button id="addLineBtn" type="button">Add Line</button>
-  <button id="calcBtn"    type="button">Calculate</button>
-
-  <!-- Text output -->
-  <pre id="output"></pre>
-
-  <!-- Canvas for drawing -->
+  <!-- canvas -->
   <canvas id="canvas" width="600" height="600"></canvas>
 
-  <!-- Load script.js -->
-  <script src="script.js"></script>
+  <!-- report output -->
+  <pre id="output"></pre>
 </body>
 </html>
