@@ -33,6 +33,7 @@ button:hover {
   background-color: #f0f0f0;
 }
 
+/* Screen (non-print) styling for the report box */
 pre#output {
   background-color: #f9f9f9;
   border: 1px solid #ccc;
@@ -44,6 +45,7 @@ pre#output {
   overflow: auto;
 }
 
+/* Screen (non-print) styling for the canvas */
 canvas#canvas {
   display: block;
   border: 1px solid #ccc;
@@ -52,35 +54,37 @@ canvas#canvas {
 
 /* Print-only rules */
 @media print {
-  /* Hide everything by default */
+  /* Hide all elements by default */
   body * {
     visibility: hidden;
   }
 
-  /* Show only the report text and the canvas */
+  /* Show only the report text and canvas */
   #output,
   #canvas {
     visibility: visible;
   }
 
-  /* Position the report text normally, remove its border/background */
+  /* Ensure the report text starts at the very top of the printed page */
   #output {
-    position: static;
+    position: static;      /* flow normally */
     top: auto;
     left: auto;
     width: 100%;
-    white-space: pre-wrap;
-    margin: 0;
-    padding: 0;
-    border: none;
-    background: none;
+    white-space: pre-wrap; /* preserve line breaks/spaces */
+    margin: 0;             /* no extra margin */
+    padding: 0;            /* no padding */
+    background: none;      /* remove grey background */
+    border: none;          /* remove border */
+    max-height: none;      /* allow full height */
+    overflow: visible;     /* show all text */
   }
 
-  /* Place the canvas below the report text */
+  /* Place the canvas immediately after the report text */
   #canvas {
-    position: static;
+    position: static;      /* flow normally */
     display: block;
-    margin-top: 16px;
-    border: none;
+    margin-top: 16px;      /* space below report */
+    border: none;          /* remove border */
   }
 }
