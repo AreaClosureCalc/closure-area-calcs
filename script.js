@@ -1,7 +1,3 @@
-// ======================
-// script.js
-// ======================
-
 // Convert a D.MMSS value (for example 358.3719) into true decimal degrees
 function dmsToDecimal(dms) {
   const deg = Math.floor(dms);
@@ -54,7 +50,7 @@ function addLine(type = 'Straight', bearing = '', distance = '', radius = '', di
   });
   cellType.appendChild(select);
 
-  // Next four cells: Bearing, Distance/Arc, Radius, Direction
+  // Next four cells: Bearing, Dist/Arc, Radius, Direction
   [bearing, distance, radius, dir].forEach(val => {
     const cell = row.insertCell();
     const input = document.createElement('input');
@@ -86,7 +82,7 @@ function calculate() {
   const lines = [];
   for (let i = 1; i < inputTable.rows.length; i++) {
     const row        = inputTable.rows[i];
-    const type       = row.cells[0].firstChild.value;             
+    const type       = row.cells[0].firstChild.value;
     const bearingDMS = parseFloat(row.cells[1].firstChild.value);
     const distArc    = parseFloat(row.cells[2].firstChild.value);
     const radius     = parseFloat(row.cells[3].firstChild.value);
@@ -294,7 +290,6 @@ function calculate() {
       if (!C) return;
       for (let k = 0; k <= 50; k++) {
         const t = k / 50;
-        // Interpolate between start and end in math angle
         const ang = A.start + (A.end - A.start) * t;
         const sE = C.east  + R * Math.cos(ang);
         const sN = C.north + R * Math.sin(ang);
@@ -362,7 +357,7 @@ function calculate() {
       let endAng   = -A.end;
       const anticlockwise = (A.dir === 'L');
 
-      // Adjust endAngle so we draw the minor arc in the correct direction
+      // Adjust endAng so it draws minor arc in correct direction
       if (anticlockwise) {
         if (endAng < startAng) {
           endAng += 2 * Math.PI;
@@ -408,11 +403,16 @@ function calculate() {
   });
 }
 
-// When the page loads, wire up the buttons
+// Wire up buttons on load
 window.onload = () => {
   document.getElementById('addLineBtn').addEventListener('click', () => addLine());
   document.getElementById('calcBtn').addEventListener('click', calculate);
 
+  // Print to PDF
+  document.getElementById('printBtn').addEventListener('click', () => {
+    window.print();
+  });
+
   // Optionally preload one example Curve row for testing:
-  // addLine('Curve','358.3719','109.569','206.106','R');
+  // addLine('Curve', '358.3719', '109.569', '206.106', 'R');
 };
