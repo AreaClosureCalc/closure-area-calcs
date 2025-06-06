@@ -413,6 +413,11 @@ window.onload = () => {
   document.getElementById('addLineBtn').addEventListener('click', () => addLine());
   document.getElementById('calcBtn').addEventListener('click', calculate);
 
+  // New: print handler
+  document.getElementById('printBtn').addEventListener('click', () => {
+    window.print();
+  });
+
   // Optionally preload one example Curve row for testing:
   // addLine('Curve','358.3719','109.569','206.106','R');
 };
