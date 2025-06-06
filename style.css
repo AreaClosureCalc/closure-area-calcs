@@ -47,12 +47,12 @@ pre#output {
   box-sizing: border-box;
 }
 
-/* Screen (non-print) styling for the canvas: reduced width ~40%, aligned left */
+/* Screen (non-print) styling for the canvas: reduced width to 25%, aligned left */
 canvas#canvas {
   display: block;
   border: 1px solid #ccc;
   margin: 16px 0 0 0;  /* top margin, aligned left */
-  width: 40%;         /* canvas occupies 40% of container’s width */
+  width: 25%;         /* canvas occupies 25% of container’s width */
   height: auto;       /* maintain aspect ratio */
 }
 
@@ -85,7 +85,7 @@ canvas#canvas {
     page-break-after: avoid;     /* keep canvas on same page */
   }
 
-  /* Place the canvas directly after the report, at ~25% width */
+  /* Place the canvas directly after the report, at 25% width */
   #canvas {
     position: static;            /* flow normally below the report */
     display: block;
@@ -93,7 +93,7 @@ canvas#canvas {
     border: none;                /* remove border */
     page-break-before: avoid;    /* keep it on the same page as report */
     page-break-inside: avoid;    /* do not break it across pages */
-    width: 25%;                  /* scale canvas to 40% of page width */
+    width: 25%;                  /* scale canvas to 25% of page width */
     height: auto;                /* maintain aspect ratio */
   }
 }
