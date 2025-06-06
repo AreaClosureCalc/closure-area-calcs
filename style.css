@@ -47,13 +47,13 @@ pre#output {
   box-sizing: border-box;
 }
 
-/* Screen (non-print) styling for the canvas: reduced size */
+/* Screen (non-print) styling for the canvas: reduced width to ~50%, aligned left */
 canvas#canvas {
   display: block;
   border: 1px solid #ccc;
-  margin: 16px auto 0;   /* top margin, centered horizontally */
-  width: 50%;            /* canvas is half the container width on screen */
-  height: auto;          /* maintain aspect ratio */
+  margin: 16px 0 0 0;  /* only a top margin, no auto centering */
+  width: 50%;         /* canvas occupies half of the container’s width */
+  height: auto;       /* maintain aspect ratio */
 }
 
 /* Print-only rules */
@@ -89,7 +89,7 @@ canvas#canvas {
   #canvas {
     position: static;            /* flow normally below the report */
     display: block;
-    margin: 16px auto 0;         /* top gap, centered horizontally */
+    margin: 16px 0 0 0;          /* top gap, aligned left */
     border: none;                /* remove border */
     page-break-before: avoid;    /* keep it on the same page as report */
     page-break-inside: avoid;    /* do not break it across pages */
