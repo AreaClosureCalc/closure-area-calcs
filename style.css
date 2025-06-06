@@ -1,44 +1,78 @@
+/* Basic page styling */
 body {
   font-family: Arial, sans-serif;
   margin: 20px;
+  color: #333;
 }
 
-#controls {
-  margin-bottom: 10px;
+h1 {
+  margin-bottom: 16px;
 }
 
-#controls button {
-  margin-right: 10px;
-  padding: 6px 12px;
+table#inputTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 12px;
+}
+
+table#inputTable th,
+table#inputTable td {
+  border: 1px solid #ccc;
+  padding: 6px 8px;
+  text-align: left;
+}
+
+button {
+  padding: 8px 12px;
+  margin-right: 8px;
   font-size: 14px;
+  cursor: pointer;
 }
 
-canvas {
-  border: 1px solid #999;
-  display: block;
-  margin-bottom: 20px;
+button:hover {
+  background-color: #f0f0f0;
 }
 
-pre {
-  background-color: #fafafa;
-  border: 1px solid #ddd;
-  padding: 10px;
+pre#output {
+  background-color: #f9f9f9;
+  border: 1px solid #ccc;
+  padding: 12px;
   white-space: pre-wrap;
-  word-wrap: break-word;
+  font-family: Consolas, Menlo, monospace;
+  margin-top: 16px;
+  max-height: 400px;
+  overflow: auto;
 }
 
+canvas#canvas {
+  display: block;
+  border: 1px solid #ccc;
+  margin-top: 16px;
+}
+
+/* Print-only rules */
 @media print {
-  /* hide controls when printing */
-  #controls {
-    display: none;
+  body * {
+    visibility: hidden;
   }
 
-  /* make canvas and report fill width */
-  canvas,
-  pre {
-    width: 100% !important;
-    margin: 0;
-    padding: 0;
-    page-break-inside: avoid;
+  #output,
+  #canvas {
+    visibility: visible;
+  }
+
+  #output {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    white-space: pre-wrap;
+  }
+
+  #canvas {
+    position: absolute;
+    top: auto;
+    left: 0;
+    margin-top: 1em;
   }
 }
