@@ -2,59 +2,59 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Traverse Calculator</title>
+  <title>Traverse Report</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 20px;
-    }
-    #controls {
-      margin-bottom: 10px;
-    }
-    #controls button {
-      margin-right: 10px;
-      padding: 6px 12px;
-      font-size: 14px;
-    }
-    canvas {
-      border: 1px solid #999;
-      display: block;
-      margin-bottom: 20px;
-    }
-    pre {
-      background-color: #fafafa;
-      border: 1px solid #ddd;
-      padding: 10px;
-      white-space: pre-wrap;
-      word-wrap: break-word;
-    }
+    /* your existing styles… */
+
     @media print {
-      /* Hide controls when printing */
-      #controls {
-        display: none;
+      body * {
+        visibility: hidden;
       }
-      canvas,
-      pre {
-        width: 100% !important;
-        margin: 0;
-        padding: 0;
-        page-break-inside: avoid;
+
+      #output,
+      #canvas {
+        visibility: visible;
+      }
+
+      #output {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        white-space: pre-wrap;
+      }
+
+      #canvas {
+        position: absolute;
+        top: auto;
+        left: 0;
+        margin-top: 1em;
       }
     }
   </style>
 </head>
 <body>
-  <!-- controls -->
-  <div id="controls">
-    <button id="addLineBtn">Add Line</button>
-    <button id="calcBtn">Calculate</button>
-    <button id="printBtn">Print to PDF</button>
-  </div>
+  <h1>Traverse Calculator</h1>
 
-  <!-- canvas -->
+  <table id="inputTable">
+    <tr>
+      <th>Type</th>
+      <th>Bearing (D.MMSS)</th>
+      <th>Dist/Arc</th>
+      <th>Radius</th>
+      <th>Dir</th>
+      <th>Action</th>
+    </tr>
+    <!-- rows get added here via addLine() -->
+  </table>
+
+  <button id="addLineBtn">Add Line</button>
+  <button id="calcBtn">Calculate</button>
+  <button id="printBtn">Print to PDF</button>
+
+  <pre id="output"></pre>
   <canvas id="canvas" width="600" height="600"></canvas>
 
-  <!-- report output -->
-  <pre id="output"></pre>
+  <script src="script.js"></script>
 </body>
 </html>
