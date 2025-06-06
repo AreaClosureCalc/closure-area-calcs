@@ -47,13 +47,13 @@ pre#output {
   box-sizing: border-box;
 }
 
-/* Screen (non-print) styling for the canvas */
+/* Screen (non-print) styling for the canvas: reduced size */
 canvas#canvas {
   display: block;
   border: 1px solid #ccc;
-  margin-top: 16px;
-  width: 100%;
-  height: auto;
+  margin: 16px auto 0;   /* top margin, centered horizontally */
+  width: 50%;            /* canvas is half the container width on screen */
+  height: auto;          /* maintain aspect ratio */
 }
 
 /* Print-only rules */
