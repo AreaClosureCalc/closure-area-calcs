@@ -3,9 +3,9 @@
    =========================================== */
 
 /* ========== 1) GLOBAL RESET ========== */
-/* Remove default margins/padding and force zero print margins */
+/* Force half-inch margins on printed pages */
 @page {
-  margin: 0;
+  margin: 0.5in;
 }
 
 html, body {
@@ -56,7 +56,7 @@ pre#output {
   border: 1px solid #ccc;
   padding: 12px;
   white-space: pre-wrap;
-  font-family: "Consolas", "Menlo", monospace; /* keep fixed-width for numbers */
+  font-family: "Consolas", "Menlo", monospace; /* monospace for alignment on screen */
   margin-top: 16px;
   max-height: 400px;
   overflow: auto;
@@ -93,24 +93,25 @@ canvas#canvas {
     visibility: visible;
   }
 
-  /* Force the report text to start at the very top, plain Calibri text */
+  /* Force #output to start flush at half-inch top/left (handled by @page),
+     use a monospace font so columns align perfectly */
   pre#output {
-    font-family: Calibri, sans-serif; /* use Calibri in print */
+    font-family: "Consolas", "Menlo", monospace; /* monospace for perfect columns */
     position: static;         /* normal flow */
     top: auto;
     left: auto;
-    width: 100%;              /* fill printable width */
-    white-space: pre-wrap;    /* preserve line breaks */
+    width: 100%;              /* fill printable width minus page margins */
+    white-space: pre;         /* preserve exact spacing and line breaks */
     margin: 0;                /* no extra margin */
     padding: 0;               /* no padding */
     background: none;         /* remove screen-only gray background */
     border: none;             /* remove screen-only border */
-    max-height: none !important;  /* override scroll-limited height */
+    max-height: none !important;  /* override any height limit */
     overflow: visible !important; /* show all text */
     page-break-after: avoid;      /* keep canvas on same page */
   }
 
-  /* Place the canvas directly below the text, 25% width, no border */
+  /* Place the canvas directly below the report, at 25% width, no border */
   #canvas {
     position: static;            /* normal flow below #output */
     display: block;
