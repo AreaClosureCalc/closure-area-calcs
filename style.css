@@ -1,48 +1,124 @@
+/* ===========================================
+   style.css for Traverse Calculator Application
+   =========================================== */
+
+/* ========== 1) GLOBAL RESET ========== */
+/* Remove default margins/padding and force zero print margins */
+@page {
+  margin: 0;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+/* ========== 2) SCREEN (NORMAL) STYLES ========== */
+body {
+  font-family: Calibri, sans-serif;
+  margin: 20px;      /* small padding on screen only */
+  color: #333;
+}
+
+h1 {
+  margin-bottom: 16px;
+}
+
+table#inputTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 12px;
+}
+
+table#inputTable th,
+table#inputTable td {
+  border: 1px solid #ccc;
+  padding: 6px 8px;
+  text-align: left;
+}
+
+button {
+  font-family: Calibri, sans-serif;
+  padding: 8px 12px;
+  margin-right: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: #f0f0f0;
+}
+
+/* Report text box (scrollable) on screen */
+pre#output {
+  background-color: #f9f9f9;
+  border: 1px solid #ccc;
+  padding: 12px;
+  white-space: pre-wrap;
+  font-family: "Consolas", "Menlo", monospace; /* keep fixed-width for numbers */
+  margin-top: 16px;
+  max-height: 400px;
+  overflow: auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Canvas on screen: 25% width, aligned left, with minimum height */
+canvas#canvas {
+  display: block;
+  border: 1px solid #ccc;
+  margin: 16px 0 0 0;  /* gap above */
+  width: 25%;         /* 25% of container’s width */
+  min-height: 200px;  /* ensure visible on screen */
+  height: auto;       /* maintain aspect ratio */
+}
+
+/* ========== 3) PRINT-ONLY STYLES ========== */
 @media print {
-  /* Remove page margins as before */
-  @page {
-    margin: 0;
-  }
+  /* Remove any default body margin/padding for printing */
   html, body {
     margin: 0;
     padding: 0;
   }
 
-  /* Hide everything except our report and canvas */
+  /* Hide all elements by default */
   body * {
     visibility: hidden;
   }
+
+  /* Make only the report text and the canvas visible */
   #output,
   #canvas {
     visibility: visible;
   }
 
-  /* Force the report to flow at full height (no scroll box) */
+  /* Force the report text to start at the very top, plain Calibri text */
   pre#output {
-    position: static;
+    font-family: Calibri, sans-serif; /* use Calibri in print */
+    position: static;         /* normal flow */
     top: auto;
     left: auto;
-    width: 100%;
-    white-space: pre-wrap;
-    margin: 0;
-    padding: 0;
-    background: none;
-    border: none;
-    /* Override the screen-only max-height/overflow */
-    max-height: none !important;
-    overflow: visible !important;
-    page-break-after: avoid;
+    width: 100%;              /* fill printable width */
+    white-space: pre-wrap;    /* preserve line breaks */
+    margin: 0;                /* no extra margin */
+    padding: 0;               /* no padding */
+    background: none;         /* remove screen-only gray background */
+    border: none;             /* remove screen-only border */
+    max-height: none !important;  /* override scroll-limited height */
+    overflow: visible !important; /* show all text */
+    page-break-after: avoid;      /* keep canvas on same page */
   }
 
-  /* Canvas printing (unchanged) */
+  /* Place the canvas directly below the text, 25% width, no border */
   #canvas {
-    position: static;
+    position: static;            /* normal flow below #output */
     display: block;
-    margin: 16px 0 0 0;
-    border: none;
-    width: 25%;
-    height: auto;
-    page-break-before: avoid;
-    page-break-inside: avoid;
+    margin: 16px 0 0 0;          /* small gap after report */
+    border: none;                /* no border in print */
+    width: 25%;                  /* 25% of printed page width */
+    height: auto;                /* maintain aspect ratio */
+    page-break-before: avoid;    /* keep on same page as report */
+    page-break-inside: avoid;    /* do not split canvas across pages */
   }
 }
