@@ -47,7 +47,7 @@ pre#output {
   box-sizing: border-box;
 }
 
-/* Screen (non-print) styling for the canvas: reduced width to 25%, aligned left */
+/* Screen (non-print) styling for the canvas: 25% width, aligned left */
 canvas#canvas {
   display: block;
   border: 1px solid #ccc;
@@ -58,42 +58,51 @@ canvas#canvas {
 
 /* Print-only rules */
 @media print {
-  /* Hide all other elements */
+  /* Remove default page margins and push content up to the top */
+  @page {
+    margin: 0;
+  }
+  body {
+    margin: 0;           /* no margin so content starts at page top */
+    padding: 10px;       /* small padding to avoid printer clipping */
+  }
+
+  /* Hide all elements except report text and canvas */
   body * {
     visibility: hidden;
   }
 
-  /* Show only the report text and the canvas */
+  /* Show only the report text #output and canvas */
   #output,
   #canvas {
     visibility: visible;
   }
 
-  /* Ensure the report starts at the very top of the printed page */
+  /* Report text: full width, flush to top, no border or background */
   #output {
-    position: static;            /* flow normally in print */
+    position: static;            /* flow normally */
     top: auto;
     left: auto;
-    width: 100%;                 /* use full printable width */
+    width: 100%;                 /* fill printable width */
     white-space: pre-wrap;       /* preserve line breaks */
     margin: 0;                   /* no extra margin */
     padding: 0;                  /* no padding */
-    background: none;            /* remove grey background */
+    background: none;            /* remove gray background */
     border: none;                /* remove border */
     max-height: none;            /* no height limit */
-    overflow: visible;           /* show all text */
+    overflow: visible;           /* show all content */
     page-break-after: avoid;     /* keep canvas on same page */
   }
 
-  /* Place the canvas directly after the report, at 25% width */
+  /* Canvas: directly under text, 25% width, no border */
   #canvas {
-    position: static;            /* flow normally below the report */
+    position: static;            /* flow normally below report */
     display: block;
-    margin: 16px 0 0 0;          /* top gap, aligned left */
+    margin-top: 16px;            /* small gap below report */
     border: none;                /* remove border */
-    page-break-before: avoid;    /* keep it on the same page as report */
-    page-break-inside: avoid;    /* do not break it across pages */
-    width: 25%;                  /* scale canvas to 25% of page width */
+    page-break-before: avoid;    /* keep on same page as report */
+    page-break-inside: avoid;    /* do not break across pages */
+    width: 25%;                  /* 25% of page width */
     height: auto;                /* maintain aspect ratio */
   }
 }
