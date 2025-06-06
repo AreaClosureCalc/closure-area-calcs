@@ -69,31 +69,31 @@ canvas#canvas {
     visibility: visible;
   }
 
-  /* Make sure the report starts at the very top of the page */
+  /* Ensure the report starts at the very top of the printed page */
   #output {
     position: static;            /* flow normally in print */
     top: auto;
     left: auto;
     width: 100%;                 /* use full printable width */
     white-space: pre-wrap;       /* preserve line breaks */
-    margin: 0;                   /* remove any top/bottom margins */
-    padding: 0;                  /* remove padding */
+    margin: 0;                   /* no extra margin */
+    padding: 0;                  /* no padding */
     background: none;            /* remove grey background */
     border: none;                /* remove border */
-    max-height: none;            /* do not limit height */
+    max-height: none;            /* no height limit */
     overflow: visible;           /* show all text */
     page-break-after: avoid;     /* keep canvas on same page */
   }
 
-  /* Place the canvas directly after the report, no border */
+  /* Place the canvas directly after the report, at 50% width */
   #canvas {
-    position: static;            /* flow normally */
+    position: static;            /* flow normally below the report */
     display: block;
-    margin-top: 16px;            /* small gap below report */
+    margin: 16px auto 0;         /* top gap, centered horizontally */
     border: none;                /* remove border */
     page-break-before: avoid;    /* keep it on the same page as report */
     page-break-inside: avoid;    /* do not break it across pages */
-    width: 100%;                 /* full width */
-    height: auto;                /* scale proportionally */
+    width: 50%;                  /* scale canvas to 50% of page width */
+    height: auto;                /* maintain aspect ratio */
   }
 }
