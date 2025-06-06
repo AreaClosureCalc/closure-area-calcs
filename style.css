@@ -43,6 +43,8 @@ pre#output {
   margin-top: 16px;
   max-height: 400px;
   overflow: auto;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* Screen (non-print) styling for the canvas */
@@ -50,41 +52,48 @@ canvas#canvas {
   display: block;
   border: 1px solid #ccc;
   margin-top: 16px;
+  width: 100%;
+  height: auto;
 }
 
 /* Print-only rules */
 @media print {
-  /* Hide all elements by default */
+  /* Hide all other elements */
   body * {
     visibility: hidden;
   }
 
-  /* Show only the report text and canvas */
+  /* Show only the report text and the canvas */
   #output,
   #canvas {
     visibility: visible;
   }
 
-  /* Ensure the report text starts at the very top of the printed page */
+  /* Make sure the report starts at the very top of the page */
   #output {
-    position: static;      /* flow normally */
+    position: static;            /* flow normally in print */
     top: auto;
     left: auto;
-    width: 100%;
-    white-space: pre-wrap; /* preserve line breaks/spaces */
-    margin: 0;             /* no extra margin */
-    padding: 0;            /* no padding */
-    background: none;      /* remove grey background */
-    border: none;          /* remove border */
-    max-height: none;      /* allow full height */
-    overflow: visible;     /* show all text */
+    width: 100%;                 /* use full printable width */
+    white-space: pre-wrap;       /* preserve line breaks */
+    margin: 0;                   /* remove any top/bottom margins */
+    padding: 0;                  /* remove padding */
+    background: none;            /* remove grey background */
+    border: none;                /* remove border */
+    max-height: none;            /* do not limit height */
+    overflow: visible;           /* show all text */
+    page-break-after: avoid;     /* keep canvas on same page */
   }
 
-  /* Place the canvas immediately after the report text */
+  /* Place the canvas directly after the report, no border */
   #canvas {
-    position: static;      /* flow normally */
+    position: static;            /* flow normally */
     display: block;
-    margin-top: 16px;      /* space below report */
-    border: none;          /* remove border */
+    margin-top: 16px;            /* small gap below report */
+    border: none;                /* remove border */
+    page-break-before: avoid;    /* keep it on the same page as report */
+    page-break-inside: avoid;    /* do not break it across pages */
+    width: 100%;                 /* full width */
+    height: auto;                /* scale proportionally */
   }
 }
