@@ -1,48 +1,44 @@
 body {
-  font-family: "Calibri", sans-serif;
+  font-family: Arial, sans-serif;
   margin: 20px;
 }
 
-h1 {
+#controls {
   margin-bottom: 10px;
 }
 
-table {
-  border-collapse: collapse;
-  margin-bottom: 10px;
-  width: 100%;
-}
-
-th,
-td {
-  border: 1px solid #999;
-  padding: 6px;
-  text-align: center;
-}
-
-th {
-  background-color: #f2f2f2;
-}
-
-button {
+#controls button {
   margin-right: 10px;
   padding: 6px 12px;
-  cursor: pointer;
-  font-family: "Calibri", sans-serif;
-}
-
-#output {
-  background-color: #f9f9f9;
-  border: 1px solid #ccc;
-  padding: 10px;
-  white-space: pre-wrap;
-  margin-top: 10px;
-  height: 200px;
-  overflow-y: auto;
-  font-family: "Calibri", sans-serif;
+  font-size: 14px;
 }
 
 canvas {
-  border: 1px solid #ccc;
-  margin-top: 10px;
+  border: 1px solid #999;
+  display: block;
+  margin-bottom: 20px;
+}
+
+pre {
+  background-color: #fafafa;
+  border: 1px solid #ddd;
+  padding: 10px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+@media print {
+  /* hide controls when printing */
+  #controls {
+    display: none;
+  }
+
+  /* make canvas and report fill width */
+  canvas,
+  pre {
+    width: 100% !important;
+    margin: 0;
+    padding: 0;
+    page-break-inside: avoid;
+  }
 }
