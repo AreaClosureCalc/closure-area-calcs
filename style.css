@@ -60,7 +60,7 @@ canvas#canvas {
 @media print {
   /* Hide all other elements */
   body * {
-    visibility: hidden;
+    visibility: visible;
   }
 
   /* Show only the report text and the canvas */
